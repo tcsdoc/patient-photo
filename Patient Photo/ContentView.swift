@@ -21,6 +21,8 @@ struct ContentView: View {
     @State private var isSaving = false
     @State private var showingDocumentPicker = false
     @State private var hasTransferredToServer = false
+    @State private var showingImportPicker = false
+    @State private var showingVerificationInstructions = false
     @StateObject private var photoManager = PhotoManager()
     
     enum Step {
@@ -40,27 +42,17 @@ struct ContentView: View {
                     VStack(alignment: .leading, spacing: 5) {
                         Text("Patient Photo")
                             .font(.title2)
-                            .fontWeight(.semibold)
+                            .bold()
                         Text("Capture and Save to Server")
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                         Text("v\(appVersion)")
-                            .font(.caption)
+                            .font(.custom("HelveticaNeue-Medium", size: 13))
                             .foregroundColor(.secondary)
-                            .fontWeight(.medium)
                     }
                     
                     Spacer()
                     
-                    // Save Status
-                    HStack(spacing: 8) {
-                        Circle()
-                            .fill(saveStatusColor)
-                            .frame(width: 8, height: 8)
-                        Text(photoManager.isSaving ? photoManager.getSaveStatusMessage() : saveStatus)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
                 }
                 .padding(.horizontal, 24)
                 .padding(.top, 20)
@@ -88,9 +80,25 @@ struct ContentView: View {
             ImagePicker(image: $currentPhoto, onImagePicked: handleImagePicked)
         }
         .sheet(isPresented: $showingDocumentPicker) {
-            if let fileURL = photoManager.shareRecentFile() {
-                DocumentPicker(sourceFileURL: fileURL, isPresented: $showingDocumentPicker, hasTransferredToServer: $hasTransferredToServer)
-            }
+            DocumentPicker(
+                sourceFileURL: photoManager.shareRecentFile() ?? URL(fileURLWithPath: ""), // Pass a dummy URL if no file
+                isPresented: $showingDocumentPicker,
+                hasTransferredToServer: $hasTransferredToServer,
+                photoManager: photoManager,
+                onExportComplete: { showingVerificationInstructions = true }
+            )
+        }
+        .sheet(isPresented: $showingImportPicker) {
+            DocumentImportPicker(
+                isPresented: $showingImportPicker,
+                photoManager: photoManager
+            )
+        }
+        .sheet(isPresented: $showingVerificationInstructions) {
+            VerificationInstructionsView(
+                isPresented: $showingVerificationInstructions,
+                showingImportPicker: $showingImportPicker
+            )
         }
         .onChange(of: currentStep) { newStep in
             if newStep == .photo {
@@ -122,49 +130,65 @@ struct ContentView: View {
     }
     
     private var nameEntryView: some View {
-        VStack(spacing: 40) {
-            VStack(spacing: 20) {
-                Image(systemName: "person.badge.plus")
-                    .font(.system(size: 60))
-                    .foregroundColor(.blue)
-                
-                Text("Enter Patient Name")
-                    .font(.title2)
-                    .fontWeight(.medium)
-                
-                Text("Photos will be captured and ready to save to server")
-                    .font(.body)
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-            }
-            
-            VStack(spacing: 20) {
-                TextField("Patient Name", text: $patientName)
-                    .textFieldStyle(RoundedBorderTextFieldStyle())
-                    .font(.title3)
-                    .frame(height: 60)
-                    .autocapitalization(.words)
-                    .disableAutocorrection(true)
-                
-                Button(action: {
-                    if !patientName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                        currentStep = .photo
-                    }
-                }) {
-                    HStack(spacing: 12) {
-                        Image(systemName: "camera")
-                            .font(.title3)
-                        Text("Take Photo")
-                            .font(.title3)
-                            .fontWeight(.medium)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 60)
-                    .background(patientName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? Color.gray : Color.blue)
-                    .foregroundColor(.white)
-                    .cornerRadius(12)
+        ZStack {
+            LinearGradient(gradient: Gradient(colors: [Color(.systemTeal).opacity(0.18), Color(.systemGreen).opacity(0.12)]), startPoint: .top, endPoint: .bottom)
+                .ignoresSafeArea()
+            VStack(spacing: 40) {
+                VStack(spacing: 20) {
+                    Image(systemName: "person.badge.plus")
+                        .font(.system(size: 60))
+                        .foregroundColor(.blue)
+                    
+                    Text("Enter Patient Name")
+                        .font(.title2)
+                        .bold()
+                    
+                    Text("Photos will be captured and ready to save to server")
+                        .font(.body)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
                 }
-                .disabled(patientName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                
+                ZStack {
+                    RoundedRectangle(cornerRadius: 20)
+                        .fill(Color(.systemBlue).opacity(0.08))
+                        .shadow(color: Color(.systemBlue).opacity(0.10), radius: 8, x: 0, y: 4)
+                    VStack(spacing: 20) {
+                        TextField("Patient Name", text: $patientName)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                            .font(.title3)
+                            .frame(width: 300)
+                            .multilineTextAlignment(.center)
+                            .autocapitalization(.words)
+                            .disableAutocorrection(true)
+                            .onChange(of: patientName) { newValue in
+                                patientName = String(newValue.prefix(16))
+                            }
+                        
+                        Button(action: {
+                            if !patientName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                currentStep = .photo
+                            }
+                        }) {
+                            HStack(spacing: 12) {
+                                Image(systemName: "camera")
+                                    .font(.title3)
+                                Text("Take Photo")
+                                    .font(.title3)
+                                    .fontWeight(.medium)
+                            }
+                            .frame(height: 60)
+                            .frame(width: 300)
+                            .multilineTextAlignment(.center)
+                            .background(patientName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? Color.gray : Color.blue)
+                            .foregroundColor(.white)
+                            .cornerRadius(12)
+                        }
+                        .disabled(patientName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    }
+                    .padding(32)
+                }
+                .padding(.horizontal, 16)
             }
         }
     }
@@ -176,9 +200,9 @@ struct ContentView: View {
                     .font(.system(size: 80))
                     .foregroundColor(isSaving ? .orange : .green)
                 
-                Text(isSaving ? "Saving Photo..." : "Photo Saved!")
+                Text(isSaving ? "Saving Photo..." : "Photo Ready to Save")
                     .font(.title2)
-                    .fontWeight(.semibold)
+                    .bold()
                 
                 VStack(spacing: 8) {
                     Text("Patient: \(lastCopiedPatient)")
@@ -197,7 +221,7 @@ struct ContentView: View {
                                     .frame(width: 200)
                                 
                                 Text("\(Int(photoManager.saveProgress * 100))%")
-                                    .font(.caption)
+                                    .font(.custom("HelveticaNeue-Medium", size: 13))
                                     .foregroundColor(.secondary)
                             }
                         }
@@ -208,7 +232,7 @@ struct ContentView: View {
                                 .foregroundColor(.green)
                             
                             Text("Ready to save to server")
-                                .font(.caption)
+                                .font(.custom("HelveticaNeue-Medium", size: 13))
                                 .foregroundColor(.secondary)
                         }
                     }
@@ -218,23 +242,26 @@ struct ContentView: View {
             if !isSaving && !photoManager.isSaving {
                 VStack(spacing: 15) {
                     // Save to Server button
-                    Button(action: {
-                        showingDocumentPicker = true
-                    }) {
+                    Button(action: { showingDocumentPicker = true }) {
                         HStack(spacing: 12) {
-                            Image(systemName: hasTransferredToServer ? "checkmark.icloud" : "icloud.and.arrow.up")
+                            Image(systemName: "icloud.and.arrow.up")
                                 .font(.title3)
-                            Text(hasTransferredToServer ? "Transferred to Server" : "Save to Server")
+                            Text("Save to Server")
                                 .font(.title3)
                                 .fontWeight(.medium)
                         }
-                        .frame(maxWidth: .infinity)
+                        .frame(width: 220)
                         .frame(height: 60)
-                        .background(hasTransferredToServer ? Color.gray : Color.green)
+                        .background(Color.green)
                         .foregroundColor(.white)
                         .cornerRadius(12)
                     }
-                    .disabled(hasTransferredToServer)
+                    
+                    Text("If you don’t see your photo on the server, tap “Save to Server” again to retry the transfer.")
+                        .font(.body)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.top, 8)
                     
                     // Secondary actions
                     HStack(spacing: 15) {
@@ -248,12 +275,14 @@ struct ContentView: View {
                                     .font(.body)
                                     .fontWeight(.medium)
                             }
-                            .frame(maxWidth: .infinity)
+                            .frame(width: 120)
                             .frame(height: 50)
                             .background(Color.blue)
                             .foregroundColor(.white)
                             .cornerRadius(10)
                         }
+                        
+                        Spacer().frame(minWidth: 40)
                         
                         Button(action: {
                             exit(0)
@@ -265,7 +294,7 @@ struct ContentView: View {
                                     .font(.body)
                                     .fontWeight(.medium)
                             }
-                            .frame(maxWidth: .infinity)
+                            .frame(width: 120)
                             .frame(height: 50)
                             .background(Color.red)
                             .foregroundColor(.white)
@@ -273,6 +302,13 @@ struct ContentView: View {
                         }
                     }
                 }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 20)
+                .background(
+                    RoundedRectangle(cornerRadius: 20)
+                        .fill(Color(.systemBlue).opacity(0.08))
+                        .shadow(color: Color(.systemBlue).opacity(0.10), radius: 8, x: 0, y: 4)
+                )
             }
         }
     }
@@ -306,16 +342,15 @@ struct DocumentPicker: UIViewControllerRepresentable {
     let sourceFileURL: URL
     @Binding var isPresented: Bool
     @Binding var hasTransferredToServer: Bool
+    let photoManager: PhotoManager
+    let onExportComplete: () -> Void
     
     func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
-        // Create a document picker that will export the file to a chosen location
-        let picker = UIDocumentPickerViewController(forExporting: [sourceFileURL])
+        // Use asCopy: true to always copy, not move
+        let picker = UIDocumentPickerViewController(forExporting: [sourceFileURL], asCopy: true)
         picker.allowsMultipleSelection = false
         picker.shouldShowFileExtensions = true
-        
-        // Set the delegate to handle the completion
         picker.delegate = context.coordinator
-        
         return picker
     }
     
@@ -337,10 +372,19 @@ struct DocumentPicker: UIViewControllerRepresentable {
         func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
             // File was successfully saved to the chosen location
             print("File saved to: \(urls)")
+            
+            // Record the successful transfer
+            if let recentFile = parent.photoManager.getMostRecentFile() {
+                let patientName = recentFile.replacingOccurrences(of: ".jpg", with: "")
+                print("[DEBUG] Attempting to record transfer for file: \(recentFile), patient: \(patientName)")
+                parent.photoManager.recordTransfer(filename: recentFile, patientName: patientName)
+            }
+            
             // Mark as transferred and dismiss the sheet
             DispatchQueue.main.async {
                 self.parent.hasTransferredToServer = true
                 self.parent.isPresented = false
+                self.parent.onExportComplete() // Call the closure
             }
         }
         
@@ -415,5 +459,91 @@ extension ContentView {
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
         ContentView()
+    }
+}
+
+// MARK: - Document Import Picker
+struct DocumentImportPicker: UIViewControllerRepresentable {
+    @Binding var isPresented: Bool
+    let photoManager: PhotoManager
+    
+    class Coordinator: NSObject, UIDocumentPickerDelegate {
+        let parent: DocumentImportPicker
+        var alertController: UIAlertController?
+        
+        init(_ parent: DocumentImportPicker) {
+            self.parent = parent
+        }
+        
+        func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
+            // File was selected for verification
+            guard let url = urls.first else {
+                DispatchQueue.main.async { self.parent.isPresented = false }
+                return
+            }
+            let filename = url.lastPathComponent
+            let alert = UIAlertController(title: "File Verified", message: "File found on server: \(filename)", preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "OK", style: .default) { _ in
+                DispatchQueue.main.async { self.parent.isPresented = false }
+            })
+            controller.present(alert, animated: true)
+        }
+        
+        func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) {
+            DispatchQueue.main.async { self.parent.isPresented = false }
+        }
+    }
+    
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+    
+    func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
+        let picker = UIDocumentPickerViewController(forOpeningContentTypes: [UTType.jpeg])
+        picker.allowsMultipleSelection = false
+        picker.shouldShowFileExtensions = true
+        picker.title = "Verify photo transferred"
+        DispatchQueue.main.async {
+            picker.navigationItem.prompt = "Browse to verify your file is present on the server. Tap any file to confirm."
+        }
+        picker.delegate = context.coordinator
+        return picker
+    }
+    
+    func updateUIViewController(_ uiViewController: UIDocumentPickerViewController, context: Context) {
+        uiViewController.navigationItem.prompt = "Browse to verify your file is present on the server. Tap any file to confirm."
+    }
+}
+
+struct VerificationInstructionsView: View {
+    @Binding var isPresented: Bool
+    @Binding var showingImportPicker: Bool
+    
+    var body: some View {
+        VStack(spacing: 30) {
+            Spacer()
+            Text("Verify Your Photo Transfer")
+                .font(.title2)
+                .bold()
+            Text("In the next window, verify you see the photo transferred. If not, tap on 'Cancel' and then tap 'Save to Server' again to retry the transfer. You do not need to retake the picture unless you want a new photo.")
+                .font(.body)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 24)
+            Spacer()
+            Button(action: {
+                isPresented = false
+                showingImportPicker = true
+            }) {
+                Text("Continue")
+                    .font(.title3)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 50)
+                    .background(Color.blue)
+                    .foregroundColor(.white)
+                    .cornerRadius(12)
+            }
+            .padding(.horizontal, 40)
+            Spacer()
+        }
     }
 }
