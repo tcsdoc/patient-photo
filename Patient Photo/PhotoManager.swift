@@ -12,19 +12,6 @@ class PhotoManager: ObservableObject {
     @Published var saveProgress: Double = 0.0
     @Published var isSaving: Bool = false
     @Published var lastError: String = ""
-    @Published var transferHistory: [TransferRecord] = []
-    
-    init() {
-        loadTransferHistory()
-    }
-    
-    struct TransferRecord: Identifiable, Codable {
-        let id = UUID()
-        let filename: String
-        let patientName: String
-        let transferDate: Date
-        let fileSize: Int64
-    }
     
     func saveImage(_ image: UIImage, filename: String) async -> Bool {
         await MainActor.run {
@@ -113,70 +100,11 @@ class PhotoManager: ObservableObject {
         }
     }
     
-    // Cleanup old files (keep only last 10)
-    func cleanupOldFiles() {
-        let files = getSavedFiles()
-        if files.count > 10 {
-            let documentsPath = getDocumentsDirectory()
-            let filesToDelete = Array(files.dropFirst(10))
-            
-            for filename in filesToDelete {
-                let fileURL = documentsPath.appendingPathComponent(filename)
-                try? FileManager.default.removeItem(at: fileURL)
-            }
-        }
-    }
+
     
     // Create a share URL for the most recent file
     func shareRecentFile() -> URL? {
         guard let recentFile = getMostRecentFile() else { return nil }
         return getDocumentsDirectory().appendingPathComponent(recentFile)
-    }
-    
-    // Record a successful transfer to server
-    func recordTransfer(filename: String, patientName: String) {
-        print("[DEBUG] recordTransfer called with filename: \(filename), patientName: \(patientName)")
-        let documentsPath = getDocumentsDirectory()
-        let fileURL = documentsPath.appendingPathComponent(filename)
-        
-        do {
-            let fileAttributes = try FileManager.default.attributesOfItem(atPath: fileURL.path)
-            let fileSize = fileAttributes[.size] as? Int64 ?? 0
-            
-            let transferRecord = TransferRecord(
-                filename: filename,
-                patientName: patientName,
-                transferDate: Date(),
-                fileSize: fileSize
-            )
-            
-            transferHistory.insert(transferRecord, at: 0) // Add to beginning
-            saveTransferHistory()
-        } catch {
-            print("Error getting file size: \(error)")
-        }
-    }
-    
-    // Save transfer history to UserDefaults
-    private func saveTransferHistory() {
-        if let encoded = try? JSONEncoder().encode(transferHistory) {
-            UserDefaults.standard.set(encoded, forKey: "TransferHistory")
-        }
-    }
-    
-    // Load transfer history from UserDefaults
-    func loadTransferHistory() {
-        if let data = UserDefaults.standard.data(forKey: "TransferHistory"),
-           let decoded = try? JSONDecoder().decode([TransferRecord].self, from: data) {
-            transferHistory = decoded
-        }
-    }
-    
-    // Get formatted file size
-    func formatFileSize(_ bytes: Int64) -> String {
-        let formatter = ByteCountFormatter()
-        formatter.allowedUnits = [.useKB, .useMB]
-        formatter.countStyle = .file
-        return formatter.string(fromByteCount: bytes)
     }
 } 

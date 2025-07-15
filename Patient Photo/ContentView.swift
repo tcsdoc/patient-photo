@@ -20,13 +20,10 @@ struct ContentView: View {
     @State private var saveStatus = "Ready"
     @State private var isSaving = false
     @State private var showingDocumentPicker = false
-    @State private var hasTransferredToServer = false
-    @State private var showingImportPicker = false
-    @State private var showingVerificationInstructions = false
     @StateObject private var photoManager = PhotoManager()
     
     enum Step {
-        case nameEntry, photo, success
+        case nameEntry, photo, photoReady, transferComplete
     }
     
     // Get app version from bundle
@@ -68,8 +65,10 @@ struct ContentView: View {
                     nameEntryView
                 case .photo:
                     EmptyView()
-                case .success:
-                    successView
+                case .photoReady:
+                    photoReadyView
+                case .transferComplete:
+                    transferCompleteView
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -81,23 +80,10 @@ struct ContentView: View {
         }
         .sheet(isPresented: $showingDocumentPicker) {
             DocumentPicker(
-                sourceFileURL: photoManager.shareRecentFile() ?? URL(fileURLWithPath: ""), // Pass a dummy URL if no file
+                sourceFileURL: photoManager.shareRecentFile() ?? URL(fileURLWithPath: ""),
                 isPresented: $showingDocumentPicker,
-                hasTransferredToServer: $hasTransferredToServer,
                 photoManager: photoManager,
-                onExportComplete: { showingVerificationInstructions = true }
-            )
-        }
-        .sheet(isPresented: $showingImportPicker) {
-            DocumentImportPicker(
-                isPresented: $showingImportPicker,
-                photoManager: photoManager
-            )
-        }
-        .sheet(isPresented: $showingVerificationInstructions) {
-            VerificationInstructionsView(
-                isPresented: $showingVerificationInstructions,
-                showingImportPicker: $showingImportPicker
+                onExportComplete: { currentStep = .transferComplete }
             )
         }
         .onChange(of: currentStep) { newStep in
@@ -111,21 +97,6 @@ struct ContentView: View {
             Button("OK") { }
         } message: {
             Text(alertMessage)
-        }
-    }
-    
-    private var saveStatusColor: Color {
-        if photoManager.isSaving {
-            return .orange
-        }
-        
-        switch saveStatus {
-        case "Ready", "Photo Saved":
-            return .green
-        case "Saving...":
-            return .orange
-        default:
-            return .gray
         }
     }
     
@@ -193,7 +164,7 @@ struct ContentView: View {
         }
     }
     
-    private var successView: some View {
+    private var photoReadyView: some View {
         VStack(spacing: 40) {
             VStack(spacing: 20) {
                 Image(systemName: isSaving ? "photo.badge.checkmark" : "checkmark.circle.fill")
@@ -240,7 +211,7 @@ struct ContentView: View {
             }
             
             if !isSaving && !photoManager.isSaving {
-                VStack(spacing: 15) {
+                VStack {
                     // Save to Server button
                     Button(action: { showingDocumentPicker = true }) {
                         HStack(spacing: 12) {
@@ -256,51 +227,6 @@ struct ContentView: View {
                         .foregroundColor(.white)
                         .cornerRadius(12)
                     }
-                    
-                    Text("If you don’t see your photo on the server, tap “Save to Server” again to retry the transfer.")
-                        .font(.body)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                        .padding(.top, 8)
-                    
-                    // Secondary actions
-                    HStack(spacing: 15) {
-                        Button(action: {
-                            resetForNewPatient()
-                        }) {
-                            HStack(spacing: 8) {
-                                Image(systemName: "plus")
-                                    .font(.body)
-                                Text("New Patient")
-                                    .font(.body)
-                                    .fontWeight(.medium)
-                            }
-                            .frame(width: 120)
-                            .frame(height: 50)
-                            .background(Color.blue)
-                            .foregroundColor(.white)
-                            .cornerRadius(10)
-                        }
-                        
-                        Spacer().frame(minWidth: 40)
-                        
-                        Button(action: {
-                            exit(0)
-                        }) {
-                            HStack(spacing: 8) {
-                                Image(systemName: "xmark")
-                                    .font(.body)
-                                Text("Exit")
-                                    .font(.body)
-                                    .fontWeight(.medium)
-                            }
-                            .frame(width: 120)
-                            .frame(height: 50)
-                            .background(Color.red)
-                            .foregroundColor(.white)
-                            .cornerRadius(10)
-                        }
-                    }
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 20)
@@ -313,11 +239,62 @@ struct ContentView: View {
         }
     }
     
+    private var transferCompleteView: some View {
+        VStack(spacing: 40) {
+            VStack(spacing: 20) {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 80))
+                    .foregroundColor(.green)
+                
+                Text("Transfer Complete")
+                    .font(.title2)
+                    .bold()
+                
+                VStack(spacing: 8) {
+                    Text("Your photo has been successfully transferred to the server.")
+                        .font(.body)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                    
+                    Text("Patient: \(lastCopiedPatient)")
+                        .font(.title3)
+                        .fontWeight(.medium)
+                }
+            }
+            
+            VStack(spacing: 15) {
+                Button(action: {
+                    exit(0)
+                }) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "xmark")
+                            .font(.title3)
+                        Text("Exit")
+                            .font(.title3)
+                            .fontWeight(.medium)
+                    }
+                    .frame(width: 220)
+                    .frame(height: 60)
+                    .background(Color.red)
+                    .foregroundColor(.white)
+                    .cornerRadius(12)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 20)
+            .background(
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(Color(.systemBlue).opacity(0.08))
+                    .shadow(color: Color(.systemBlue).opacity(0.10), radius: 8, x: 0, y: 4)
+            )
+        }
+    }
+    
     private func handleImagePicked() {
         guard let image = currentPhoto else { return }
         
         lastCopiedPatient = patientName
-        currentStep = .success
+        currentStep = .photoReady
         isSaving = true
         saveStatus = "Saving..."
         
@@ -341,7 +318,6 @@ struct ContentView: View {
 struct DocumentPicker: UIViewControllerRepresentable {
     let sourceFileURL: URL
     @Binding var isPresented: Bool
-    @Binding var hasTransferredToServer: Bool
     let photoManager: PhotoManager
     let onExportComplete: () -> Void
     
@@ -373,18 +349,10 @@ struct DocumentPicker: UIViewControllerRepresentable {
             // File was successfully saved to the chosen location
             print("File saved to: \(urls)")
             
-            // Record the successful transfer
-            if let recentFile = parent.photoManager.getMostRecentFile() {
-                let patientName = recentFile.replacingOccurrences(of: ".jpg", with: "")
-                print("[DEBUG] Attempting to record transfer for file: \(recentFile), patient: \(patientName)")
-                parent.photoManager.recordTransfer(filename: recentFile, patientName: patientName)
-            }
-            
             // Mark as transferred and dismiss the sheet
             DispatchQueue.main.async {
-                self.parent.hasTransferredToServer = true
                 self.parent.isPresented = false
-                self.parent.onExportComplete() // Call the closure
+                self.parent.onExportComplete()
             }
         }
         
@@ -443,107 +411,12 @@ extension ContentView {
         return "\(lastCopiedPatient).jpg"
     }
     
-    private func resetForNewPatient() {
-        patientName = ""
-        currentPhoto = nil
-        lastCopiedPatient = ""
-        currentStep = .nameEntry
-        saveStatus = "Ready"
-        isSaving = false
-        hasTransferredToServer = false
-        photoManager.cleanupOldFiles()
-    }
+
 }
 
 // MARK: - Preview
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
         ContentView()
-    }
-}
-
-// MARK: - Document Import Picker
-struct DocumentImportPicker: UIViewControllerRepresentable {
-    @Binding var isPresented: Bool
-    let photoManager: PhotoManager
-    
-    class Coordinator: NSObject, UIDocumentPickerDelegate {
-        let parent: DocumentImportPicker
-        var alertController: UIAlertController?
-        
-        init(_ parent: DocumentImportPicker) {
-            self.parent = parent
-        }
-        
-        func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
-            // File was selected for verification
-            guard let url = urls.first else {
-                DispatchQueue.main.async { self.parent.isPresented = false }
-                return
-            }
-            let filename = url.lastPathComponent
-            let alert = UIAlertController(title: "File Verified", message: "File found on server: \(filename)", preferredStyle: .alert)
-            alert.addAction(UIAlertAction(title: "OK", style: .default) { _ in
-                DispatchQueue.main.async { self.parent.isPresented = false }
-            })
-            controller.present(alert, animated: true)
-        }
-        
-        func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) {
-            DispatchQueue.main.async { self.parent.isPresented = false }
-        }
-    }
-    
-    func makeCoordinator() -> Coordinator {
-        Coordinator(self)
-    }
-    
-    func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
-        let picker = UIDocumentPickerViewController(forOpeningContentTypes: [UTType.jpeg])
-        picker.allowsMultipleSelection = false
-        picker.shouldShowFileExtensions = true
-        picker.title = "Verify photo transferred"
-        DispatchQueue.main.async {
-            picker.navigationItem.prompt = "Browse to verify your file is present on the server. Tap any file to confirm."
-        }
-        picker.delegate = context.coordinator
-        return picker
-    }
-    
-    func updateUIViewController(_ uiViewController: UIDocumentPickerViewController, context: Context) {
-        uiViewController.navigationItem.prompt = "Browse to verify your file is present on the server. Tap any file to confirm."
-    }
-}
-
-struct VerificationInstructionsView: View {
-    @Binding var isPresented: Bool
-    @Binding var showingImportPicker: Bool
-    
-    var body: some View {
-        VStack(spacing: 30) {
-            Spacer()
-            Text("Verify Your Photo Transfer")
-                .font(.title2)
-                .bold()
-            Text("In the next window, verify you see the photo transferred. If not, tap on 'Cancel' and then tap 'Save to Server' again to retry the transfer. You do not need to retake the picture unless you want a new photo.")
-                .font(.body)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 24)
-            Spacer()
-            Button(action: {
-                isPresented = false
-                showingImportPicker = true
-            }) {
-                Text("Continue")
-                    .font(.title3)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 50)
-                    .background(Color.blue)
-                    .foregroundColor(.white)
-                    .cornerRadius(12)
-            }
-            .padding(.horizontal, 40)
-            Spacer()
-        }
     }
 }
