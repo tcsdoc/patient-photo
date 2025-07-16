@@ -14,21 +14,21 @@ struct ContentView: View {
     @State private var currentStep: Step = .nameEntry
     @State private var currentPhoto: UIImage?
     @State private var showingImagePicker = false
-    @State private var showingAlert = false
-    @State private var alertMessage = ""
-    @State private var lastCopiedPatient = ""
-    @State private var saveStatus = "Ready"
-    @State private var isSaving = false
     @State private var showingDocumentPicker = false
     @StateObject private var photoManager = PhotoManager()
     
     enum Step {
-        case nameEntry, photo, photoReady, transferComplete
+        case nameEntry, camera, transfer, complete
     }
     
     // Get app version from bundle
     private var appVersion: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+    }
+    
+    // Computed property for name validation
+    private var isPatientNameValid: Bool {
+        !patientName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
     
     var body: some View {
@@ -49,7 +49,6 @@ struct ContentView: View {
                     }
                     
                     Spacer()
-                    
                 }
                 .padding(.horizontal, 24)
                 .padding(.top, 20)
@@ -63,12 +62,12 @@ struct ContentView: View {
                 switch currentStep {
                 case .nameEntry:
                     nameEntryView
-                case .photo:
+                case .camera:
                     EmptyView()
-                case .photoReady:
-                    photoReadyView
-                case .transferComplete:
-                    transferCompleteView
+                case .transfer:
+                    transferView
+                case .complete:
+                    completeView
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -80,23 +79,20 @@ struct ContentView: View {
         }
         .sheet(isPresented: $showingDocumentPicker) {
             DocumentPicker(
-                sourceFileURL: photoManager.shareRecentFile() ?? URL(fileURLWithPath: ""),
+                sourceFileURL: photoManager.transferFileURL ?? URL(fileURLWithPath: ""),
                 isPresented: $showingDocumentPicker,
-                photoManager: photoManager,
-                onExportComplete: { currentStep = .transferComplete }
+                onExportComplete: { 
+                    photoManager.cleanupAfterTransfer()
+                    currentStep = .complete 
+                }
             )
         }
         .onChange(of: currentStep) { newStep in
-            if newStep == .photo {
+            if newStep == .camera {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                     showingImagePicker = true
                 }
             }
-        }
-        .alert("Save to Server", isPresented: $showingAlert) {
-            Button("OK") { }
-        } message: {
-            Text(alertMessage)
         }
     }
     
@@ -114,7 +110,7 @@ struct ContentView: View {
                         .font(.title2)
                         .bold()
                     
-                    Text("Photos will be captured and ready to save to server")
+                    Text("Photo will be captured and saved to server")
                         .font(.body)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
@@ -137,8 +133,8 @@ struct ContentView: View {
                             }
                         
                         Button(action: {
-                            if !patientName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                                currentStep = .photo
+                            if isPatientNameValid {
+                                currentStep = .camera
                             }
                         }) {
                             HStack(spacing: 12) {
@@ -151,11 +147,11 @@ struct ContentView: View {
                             .frame(height: 60)
                             .frame(width: 300)
                             .multilineTextAlignment(.center)
-                            .background(patientName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? Color.gray : Color.blue)
+                            .background(isPatientNameValid ? Color.blue : Color.gray)
                             .foregroundColor(.white)
                             .cornerRadius(12)
                         }
-                        .disabled(patientName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        .disabled(!isPatientNameValid)
                     }
                     .padding(32)
                 }
@@ -164,82 +160,59 @@ struct ContentView: View {
         }
     }
     
-    private var photoReadyView: some View {
+    private var transferView: some View {
         VStack(spacing: 40) {
             VStack(spacing: 20) {
-                Image(systemName: isSaving ? "photo.badge.checkmark" : "checkmark.circle.fill")
+                Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: 80))
-                    .foregroundColor(isSaving ? .orange : .green)
+                    .foregroundColor(.green)
                 
-                Text(isSaving ? "Saving Photo..." : "Photo Ready to Save")
+                Text("Photo Ready to Transfer")
                     .font(.title2)
                     .bold()
                 
                 VStack(spacing: 8) {
-                    Text("Patient: \(lastCopiedPatient)")
+                    Text("Patient: \(patientName)")
                         .font(.title3)
                         .fontWeight(.medium)
                     
-                    if isSaving || photoManager.isSaving {
-                        VStack(spacing: 8) {
-                            Text("Saving to Files app...")
-                                .font(.body)
-                                .foregroundColor(.orange)
-                            
-                            if photoManager.isSaving {
-                                ProgressView(value: photoManager.saveProgress)
-                                    .progressViewStyle(LinearProgressViewStyle())
-                                    .frame(width: 200)
-                                
-                                Text("\(Int(photoManager.saveProgress * 100))%")
-                                    .font(.custom("HelveticaNeue-Medium", size: 13))
-                                    .foregroundColor(.secondary)
-                            }
-                        }
-                    } else {
-                        VStack(spacing: 8) {
-                            Text("✅ Photo captured (640x480)")
-                                .font(.body)
-                                .foregroundColor(.green)
-                            
-                            Text("Ready to save to server")
-                                .font(.custom("HelveticaNeue-Medium", size: 13))
-                                .foregroundColor(.secondary)
-                        }
-                    }
+                    Text("✅ Photo captured (640x480)")
+                        .font(.body)
+                        .foregroundColor(.green)
+                    
+                    Text("Ready to save to server")
+                        .font(.custom("HelveticaNeue-Medium", size: 13))
+                        .foregroundColor(.secondary)
                 }
             }
             
-            if !isSaving && !photoManager.isSaving {
-                VStack {
-                    // Save to Server button
-                    Button(action: { showingDocumentPicker = true }) {
-                        HStack(spacing: 12) {
-                            Image(systemName: "icloud.and.arrow.up")
-                                .font(.title3)
-                            Text("Save to Server")
-                                .font(.title3)
-                                .fontWeight(.medium)
-                        }
-                        .frame(width: 220)
-                        .frame(height: 60)
-                        .background(Color.green)
-                        .foregroundColor(.white)
-                        .cornerRadius(12)
+            VStack {
+                Button(action: { showingDocumentPicker = true }) {
+                    HStack(spacing: 12) {
+                        Image(systemName: "icloud.and.arrow.up")
+                            .font(.title3)
+                        Text("Save to Server")
+                            .font(.title3)
+                            .fontWeight(.medium)
                     }
+                    .frame(width: 220)
+                    .frame(height: 60)
+                    .background(Color.green)
+                    .foregroundColor(.white)
+                    .cornerRadius(12)
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 20)
-                .background(
-                    RoundedRectangle(cornerRadius: 20)
-                        .fill(Color(.systemBlue).opacity(0.08))
-                        .shadow(color: Color(.systemBlue).opacity(0.10), radius: 8, x: 0, y: 4)
-                )
             }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 20)
+            .background(
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(Color(.systemBlue).opacity(0.08))
+                    .shadow(color: Color(.systemBlue).opacity(0.10), radius: 8, x: 0, y: 4)
+            )
         }
     }
     
-    private var transferCompleteView: some View {
+    private var completeView: some View {
         VStack(spacing: 40) {
             VStack(spacing: 20) {
                 Image(systemName: "checkmark.circle.fill")
@@ -251,12 +224,12 @@ struct ContentView: View {
                     .bold()
                 
                 VStack(spacing: 8) {
-                    Text("Your photo has been successfully transferred to the server.")
+                    Text("Photo successfully transferred to server.")
                         .font(.body)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
                     
-                    Text("Patient: \(lastCopiedPatient)")
+                    Text("Patient: \(patientName)")
                         .font(.title3)
                         .fontWeight(.medium)
                 }
@@ -264,18 +237,42 @@ struct ContentView: View {
             
             VStack(spacing: 15) {
                 Button(action: {
-                    exit(0)
+                    // Reset for new photo instead of exiting
+                    currentStep = .nameEntry
+                    patientName = ""
+                    currentPhoto = nil
                 }) {
                     HStack(spacing: 8) {
-                        Image(systemName: "xmark")
+                        Image(systemName: "plus.circle")
                             .font(.title3)
-                        Text("Exit")
+                        Text("New Photo")
                             .font(.title3)
                             .fontWeight(.medium)
                     }
                     .frame(width: 220)
                     .frame(height: 60)
-                    .background(Color.red)
+                    .background(Color.blue)
+                    .foregroundColor(.white)
+                    .cornerRadius(12)
+                }
+                
+                Button(action: {
+                    // App Store compliant: Reset to beginning instead of exit
+                    // Apple guidelines discourage programmatic app termination
+                    currentStep = .nameEntry
+                    patientName = ""
+                    currentPhoto = nil
+                }) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.title3)
+                        Text("Start Over")
+                            .font(.title3)
+                            .fontWeight(.medium)
+                    }
+                    .frame(width: 220)
+                    .frame(height: 60)
+                    .background(Color.gray)
                     .foregroundColor(.white)
                     .cornerRadius(12)
                 }
@@ -293,36 +290,29 @@ struct ContentView: View {
     private func handleImagePicked() {
         guard let image = currentPhoto else { return }
         
-        lastCopiedPatient = patientName
-        currentStep = .photoReady
-        isSaving = true
-        saveStatus = "Saving..."
-        
         // Resize the image to 640x480 before saving
         let resizedImage = resizeImage(image, to: CGSize(width: 640, height: 480))
         
-        // Save resized photo to device
+        // Save photo for transfer
         Task {
             let filename = createFilename()
-            let success = await photoManager.saveImage(resizedImage, filename: filename)
+            let success = await photoManager.saveImageForTransfer(resizedImage, filename: filename)
             
             await MainActor.run {
-                isSaving = false
-                saveStatus = success ? "Photo Saved" : "Save Failed"
+                if success {
+                    currentStep = .transfer
+                }
             }
         }
     }
-    
 }
 
 struct DocumentPicker: UIViewControllerRepresentable {
     let sourceFileURL: URL
     @Binding var isPresented: Bool
-    let photoManager: PhotoManager
     let onExportComplete: () -> Void
     
     func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
-        // Use asCopy: true to always copy, not move
         let picker = UIDocumentPickerViewController(forExporting: [sourceFileURL], asCopy: true)
         picker.allowsMultipleSelection = false
         picker.shouldShowFileExtensions = true
@@ -330,9 +320,7 @@ struct DocumentPicker: UIViewControllerRepresentable {
         return picker
     }
     
-    func updateUIViewController(_ uiViewController: UIDocumentPickerViewController, context: Context) {
-        // No updates needed
-    }
+    func updateUIViewController(_ uiViewController: UIDocumentPickerViewController, context: Context) {}
     
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
@@ -346,10 +334,6 @@ struct DocumentPicker: UIViewControllerRepresentable {
         }
         
         func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
-            // File was successfully saved to the chosen location
-            print("File saved to: \(urls)")
-            
-            // Mark as transferred and dismiss the sheet
             DispatchQueue.main.async {
                 self.parent.isPresented = false
                 self.parent.onExportComplete()
@@ -357,9 +341,6 @@ struct DocumentPicker: UIViewControllerRepresentable {
         }
         
         func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) {
-            // User cancelled the operation
-            print("Document picker cancelled")
-            // Dismiss the sheet
             DispatchQueue.main.async {
                 self.parent.isPresented = false
             }
@@ -370,48 +351,41 @@ struct DocumentPicker: UIViewControllerRepresentable {
 // MARK: - Helper Functions
 extension ContentView {
     private func resizeImage(_ image: UIImage, to targetSize: CGSize) -> UIImage {
-        // Calculate the aspect ratio
-        let sourceSize = image.size
-        let sourceAspectRatio = sourceSize.width / sourceSize.height
-        let targetAspectRatio = targetSize.width / targetSize.height
+        let renderer = UIGraphicsImageRenderer(size: targetSize, format: UIGraphicsImageRendererFormat.default())
         
-        var scaledSize: CGSize
-        
-        if sourceAspectRatio > targetAspectRatio {
-            // Source is wider, fit to height
-            scaledSize = CGSize(width: targetSize.height * sourceAspectRatio, height: targetSize.height)
-        } else {
-            // Source is taller, fit to width
-            scaledSize = CGSize(width: targetSize.width, height: targetSize.width / sourceAspectRatio)
+        return renderer.image { _ in
+            // Calculate the aspect ratio
+            let sourceSize = image.size
+            let sourceAspectRatio = sourceSize.width / sourceSize.height
+            let targetAspectRatio = targetSize.width / targetSize.height
+            
+            var scaledSize: CGSize
+            
+            if sourceAspectRatio > targetAspectRatio {
+                // Source is wider, fit to height
+                scaledSize = CGSize(width: targetSize.height * sourceAspectRatio, height: targetSize.height)
+            } else {
+                // Source is taller, fit to width
+                scaledSize = CGSize(width: targetSize.width, height: targetSize.width / sourceAspectRatio)
+            }
+            
+            // Calculate center position for cropping
+            let xOffset = (targetSize.width - scaledSize.width) / 2
+            let yOffset = (targetSize.height - scaledSize.height) / 2
+            let drawRect = CGRect(x: xOffset, y: yOffset, width: scaledSize.width, height: scaledSize.height)
+            
+            // Fill background with white
+            UIColor.white.setFill()
+            UIRectFill(CGRect(origin: .zero, size: targetSize))
+            
+            // Draw the image
+            image.draw(in: drawRect)
         }
-        
-        // Create graphics context
-        UIGraphicsBeginImageContextWithOptions(targetSize, false, 1.0)
-        defer { UIGraphicsEndImageContext() }
-        
-        // Calculate center position for cropping
-        let xOffset = (targetSize.width - scaledSize.width) / 2
-        let yOffset = (targetSize.height - scaledSize.height) / 2
-        let drawRect = CGRect(x: xOffset, y: yOffset, width: scaledSize.width, height: scaledSize.height)
-        
-        // Fill background with white (in case image doesn't fill entire area)
-        UIColor.white.setFill()
-        UIRectFill(CGRect(origin: .zero, size: targetSize))
-        
-        // Draw the image
-        image.draw(in: drawRect)
-        
-        // Get the resized image
-        let resizedImage = UIGraphicsGetImageFromCurrentImageContext() ?? image
-        
-        return resizedImage
     }
     
     private func createFilename() -> String {
-        return "\(lastCopiedPatient).jpg"
+        return "\(patientName).jpg"
     }
-    
-
 }
 
 // MARK: - Preview

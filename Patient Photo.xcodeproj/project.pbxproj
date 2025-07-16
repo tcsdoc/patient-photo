@@ -426,8 +426,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = "Clinical Photos";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.medical";
 				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
-				INFOPLIST_KEY_NSCameraUsageDescription = "This app needs camera access to take patient photos.";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "This app needs photo library access to select patient photos.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "This medical app requires camera access to capture patient photos for healthcare documentation purposes.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UIFileSharingEnabled = YES;
@@ -440,7 +439,7 @@
 					"@executable_path/Frameworks",
 				);
 				LIBRARY_SEARCH_PATHS = "$(inherited)";
-				MARKETING_VERSION = 1.3;
+				MARKETING_VERSION = 1.3.1;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.marlixholdings.Patient-Photo";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -465,8 +464,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = "Clinical Photos";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.medical";
 				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
-				INFOPLIST_KEY_NSCameraUsageDescription = "This app needs camera access to take patient photos.";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "This app needs photo library access to select patient photos.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "This medical app requires camera access to capture patient photos for healthcare documentation purposes.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UIFileSharingEnabled = YES;
@@ -479,7 +477,7 @@
 					"@executable_path/Frameworks",
 				);
 				LIBRARY_SEARCH_PATHS = "$(inherited)";
-				MARKETING_VERSION = 1.3;
+				MARKETING_VERSION = 1.3.1;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.marlixholdings.Patient-Photo";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
