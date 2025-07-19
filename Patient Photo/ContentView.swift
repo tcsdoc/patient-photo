@@ -195,8 +195,9 @@ struct ContentView: View {
                             .font(.title3)
                             .fontWeight(.medium)
                     }
-                    .frame(width: 220)
+                    .frame(minWidth: 280)
                     .frame(height: 60)
+                    .padding(.horizontal, 20)
                     .background(Color.green)
                     .foregroundColor(.white)
                     .cornerRadius(12)
