@@ -423,7 +423,7 @@
 				DEVELOPMENT_TEAM = KSFQHNX4S8;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = "Clinical Photos";
+				INFOPLIST_KEY_CFBundleDisplayName = "Patient Photo";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.medical";
 				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
 				INFOPLIST_KEY_NSCameraUsageDescription = "This medical app requires camera access to capture patient photos for healthcare documentation purposes.";
@@ -461,7 +461,7 @@
 				DEVELOPMENT_TEAM = KSFQHNX4S8;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = "Clinical Photos";
+				INFOPLIST_KEY_CFBundleDisplayName = "Patient Photo";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.medical";
 				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
 				INFOPLIST_KEY_NSCameraUsageDescription = "This medical app requires camera access to capture patient photos for healthcare documentation purposes.";
