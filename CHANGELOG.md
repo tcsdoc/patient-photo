@@ -53,7 +53,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **BREAKING**: Removed instructional text for cleaner interface
 - **BREAKING**: Simplified to single "Save to Server" button
 - Increased button spacing for better iPad usability
-- Updated app display name to "Clinical Photos"
+- Updated app display name to "Patient Photo"
 
 #### Removed
 - Exit button from Photo Ready screen
