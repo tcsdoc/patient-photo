@@ -22,6 +22,7 @@ struct ContentView: View {
     @State private var headshotResult: HeadshotDetector.HeadshotResult?
     @State private var isAnalyzingHeadshot = false
     @State private var showHeadshotGuidance = false
+    @State private var useBackgroundRemoved = false
     
     enum Step {
         case nameEntry, camera, headshotValidation, transfer, complete
@@ -241,17 +242,55 @@ struct ContentView: View {
                         .bold()
                         .multilineTextAlignment(.center)
                     
-                    // Show photo preview
+                    // Show photo preview with background removal toggle
                     if let photo = currentPhoto {
-                        Image(uiImage: photo)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(height: 200)
-                            .cornerRadius(12)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .stroke(result.isValidHeadshot ? Color.green : Color.orange, lineWidth: 3)
-                            )
+                        VStack(spacing: 15) {
+                            // Background removal toggle
+                            if result.backgroundRemovedImage != nil {
+                                HStack {
+                                    Text("Background Removal:")
+                                        .font(.headline)
+                                    
+                                    Spacer()
+                                    
+                                    Toggle("Remove Background", isOn: $useBackgroundRemoved)
+                                        .labelsHidden()
+                                }
+                                .padding(.horizontal)
+                            }
+                            
+                            // Image preview
+                            let displayImage = useBackgroundRemoved ? (result.backgroundRemovedImage ?? photo) : photo
+                            
+                            Image(uiImage: displayImage)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(height: 200)
+                                .cornerRadius(12)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .stroke(result.isValidHeadshot ? Color.green : Color.orange, lineWidth: 3)
+                                )
+                            
+                            // Show background removal status
+                            if result.backgroundRemovedImage != nil {
+                                HStack {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundColor(.green)
+                                    Text("Background removal available")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                            } else {
+                                HStack {
+                                    Image(systemName: "exclamationmark.triangle.fill")
+                                        .foregroundColor(.orange)
+                                    Text("Background removal failed")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                        }
                     }
                     
                     // Show headshot details
@@ -467,8 +506,15 @@ struct ContentView: View {
     private func processValidatedPhoto() {
         guard let image = currentPhoto else { return }
         
-        // Use cropped image if available and valid, otherwise use original
-        let finalImage = headshotResult?.croppedImage ?? image
+        // Choose image based on user preference and availability
+        let finalImage: UIImage
+        if useBackgroundRemoved, let backgroundRemovedImage = headshotResult?.backgroundRemovedImage {
+            finalImage = backgroundRemovedImage
+        } else if let croppedImage = headshotResult?.croppedImage {
+            finalImage = croppedImage
+        } else {
+            finalImage = image
+        }
         
         // Resize the image to 640x480 before saving
         let resizedImage = resizeImage(finalImage, to: CGSize(width: 640, height: 480))

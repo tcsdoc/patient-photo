@@ -16,12 +16,13 @@ class HeadshotDetector {
         let faceArea: CGFloat
         let faceBoundingBox: CGRect?
         let croppedImage: UIImage?
+        let backgroundRemovedImage: UIImage?
         let message: String
     }
     
-    /// Analyzes an image to determine if it's a valid headshot
+    /// Analyzes an image to determine if it's a valid headshot and removes background
     /// - Parameter image: The UIImage to analyze
-    /// - Returns: HeadshotResult with analysis details
+    /// - Returns: HeadshotResult with analysis details and background-removed image
     static func analyzeHeadshot(_ image: UIImage) async -> HeadshotResult {
         guard let cgImage = image.cgImage else {
             return HeadshotResult(
@@ -30,9 +31,13 @@ class HeadshotDetector {
                 faceArea: 0,
                 faceBoundingBox: nil,
                 croppedImage: nil,
+                backgroundRemovedImage: nil,
                 message: "Unable to process image"
             )
         }
+        
+        // Perform background removal first
+        let backgroundRemovedImage = await removeBackground(from: image)
         
         return await withCheckedContinuation { continuation in
             let request = VNDetectFaceRectanglesRequest { request, error in
@@ -44,6 +49,7 @@ class HeadshotDetector {
                         faceArea: 0,
                         faceBoundingBox: nil,
                         croppedImage: nil,
+                        backgroundRemovedImage: backgroundRemovedImage,
                         message: "Face detection failed"
                     ))
                     return
@@ -56,6 +62,7 @@ class HeadshotDetector {
                         faceArea: 0,
                         faceBoundingBox: nil,
                         croppedImage: nil,
+                        backgroundRemovedImage: backgroundRemovedImage,
                         message: "No face detection results"
                     ))
                     return
@@ -72,6 +79,7 @@ class HeadshotDetector {
                         faceArea: 0,
                         faceBoundingBox: nil,
                         croppedImage: nil,
+                        backgroundRemovedImage: backgroundRemovedImage,
                         message: message
                     ))
                     return
@@ -135,6 +143,7 @@ class HeadshotDetector {
                     faceArea: faceAreaPercentage,
                     faceBoundingBox: faceRect,
                     croppedImage: croppedImage,
+                    backgroundRemovedImage: backgroundRemovedImage,
                     message: message
                 ))
             }
@@ -153,10 +162,84 @@ class HeadshotDetector {
                     faceArea: 0,
                     faceBoundingBox: nil,
                     croppedImage: nil,
+                    backgroundRemovedImage: backgroundRemovedImage,
                     message: "Detection error: \(error.localizedDescription)"
                 ))
             }
         }
+    }
+    
+    /// Removes background from image using person segmentation
+    /// - Parameter image: Original image
+    /// - Returns: Image with background removed (transparent) or nil if segmentation fails
+    static func removeBackground(from image: UIImage) async -> UIImage? {
+        guard let cgImage = image.cgImage else { return nil }
+        
+        return await withCheckedContinuation { continuation in
+            let request = VNGeneratePersonSegmentationRequest { request, error in
+                if let error = error {
+                    print("Person segmentation error: \(error)")
+                    continuation.resume(returning: nil)
+                    return
+                }
+                
+                guard let result = request.results?.first as? VNPixelBufferObservation else {
+                    print("No person segmentation results")
+                    continuation.resume(returning: nil)
+                    return
+                }
+                
+                let maskPixelBuffer = result.pixelBuffer
+                
+                // Create masked image with white background
+                let maskedImage = createMaskedImage(from: cgImage, mask: maskPixelBuffer)
+                continuation.resume(returning: maskedImage)
+            }
+            
+            // Configure for highest quality
+            request.qualityLevel = .accurate
+            request.outputPixelFormat = kCVPixelFormatType_OneComponent8
+            
+            let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
+            do {
+                try handler.perform([request])
+            } catch {
+                print("Error performing person segmentation: \(error)")
+                continuation.resume(returning: nil)
+            }
+        }
+    }
+    
+    /// Creates an image with transparent background using the segmentation mask
+    /// - Parameters:
+    ///   - cgImage: Original image
+    ///   - mask: Segmentation mask from Vision
+    /// - Returns: Image with transparent background
+    private static func createMaskedImage(from cgImage: CGImage, mask: CVPixelBuffer) -> UIImage? {
+        let ciImage = CIImage(cgImage: cgImage)
+        let maskImage = CIImage(cvPixelBuffer: mask)
+        
+        // Scale mask to match original image size
+        let scaleX = ciImage.extent.width / maskImage.extent.width
+        let scaleY = ciImage.extent.height / maskImage.extent.height
+        let scaledMask = maskImage.transformed(by: CGAffineTransform(scaleX: scaleX, y: scaleY))
+        
+        // Create white background
+        let whiteBackground = CIImage(color: CIColor.white).cropped(to: ciImage.extent)
+        
+        // Apply mask to blend person with white background
+        guard let filter = CIFilter(name: "CIBlendWithMask") else { return nil }
+        filter.setValue(ciImage, forKey: kCIInputImageKey)
+        filter.setValue(whiteBackground, forKey: kCIInputBackgroundImageKey)
+        filter.setValue(scaledMask, forKey: kCIInputMaskImageKey)
+        
+        guard let outputImage = filter.outputImage else { return nil }
+        
+        // Convert back to UIImage
+        let context = CIContext()
+        guard let cgOutputImage = context.createCGImage(outputImage, from: outputImage.extent) else { return nil }
+        
+        return UIImage(cgImage: cgOutputImage)
     }
     
     /// Crops image to focus on the detected face with proper headshot framing
