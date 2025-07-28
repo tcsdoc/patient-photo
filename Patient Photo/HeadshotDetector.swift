@@ -178,27 +178,41 @@ class HeadshotDetector {
         return await withCheckedContinuation { continuation in
             let request = VNGeneratePersonSegmentationRequest { request, error in
                 if let error = error {
-                    print("Person segmentation error: \(error)")
+                    print("Person segmentation error: \(error.localizedDescription)")
                     continuation.resume(returning: nil)
                     return
                 }
                 
-                guard let result = request.results?.first as? VNPixelBufferObservation else {
-                    print("No person segmentation results")
+                guard let results = request.results, !results.isEmpty else {
+                    print("No person segmentation results returned")
+                    continuation.resume(returning: nil)
+                    return
+                }
+                
+                guard let result = results.first as? VNPixelBufferObservation else {
+                    print("Person segmentation result is not VNPixelBufferObservation")
                     continuation.resume(returning: nil)
                     return
                 }
                 
                 let maskPixelBuffer = result.pixelBuffer
+                print("Person segmentation successful, creating masked image...")
                 
                 // Create masked image with white background
                 let maskedImage = createMaskedImage(from: cgImage, mask: maskPixelBuffer)
+                if maskedImage != nil {
+                    print("Masked image created successfully")
+                } else {
+                    print("Failed to create masked image")
+                }
                 continuation.resume(returning: maskedImage)
             }
             
-            // Configure for highest quality
+            // Configure for highest quality and compatibility
             request.qualityLevel = .accurate
             request.outputPixelFormat = kCVPixelFormatType_OneComponent8
+            
+            print("Starting person segmentation request...")
             
             let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
             do {
@@ -219,46 +233,95 @@ class HeadshotDetector {
         let originalImage = CIImage(cgImage: cgImage)
         let maskImage = CIImage(cvPixelBuffer: mask)
         
-        // Ensure mask covers the full original image dimensions
+        print("Original image size: \(originalImage.extent)")
+        print("Mask image size: \(maskImage.extent)")
+        
+        // Scale mask to exactly match original image dimensions (fill entire image)
         let scaleX = originalImage.extent.width / maskImage.extent.width
         let scaleY = originalImage.extent.height / maskImage.extent.height
         
-        // Use uniform scaling to maintain aspect ratio
-        let scale = min(scaleX, scaleY)
+        // Use the larger scale to ensure mask covers entire image (prevent clipping)
+        let scale = max(scaleX, scaleY)
         let scaledMask = maskImage.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
         
-        // Center the mask if needed
+        print("Scale used: \(scale), Scaled mask size: \(scaledMask.extent)")
+        
+        // Center the mask properly
         let offsetX = (originalImage.extent.width - scaledMask.extent.width) / 2
         let offsetY = (originalImage.extent.height - scaledMask.extent.height) / 2
         let centeredMask = scaledMask.transformed(by: CGAffineTransform(translationX: offsetX, y: offsetY))
         
-        // Create clean white background exactly matching original dimensions
+        // Create white background
         let whiteBackground = CIImage(color: CIColor.white).cropped(to: originalImage.extent)
         
-        // Use a simpler masking approach that preserves quality
-        guard let multiplyFilter = CIFilter(name: "CIMultiplyCompositing") else { return nil }
+        // Simple approach: multiply original image with mask, then add white background
+        guard let multiplyFilter = CIFilter(name: "CIMultiplyCompositing") else {
+            print("CIMultiplyCompositing filter not available")
+            return nil
+        }
         
-        // First, create the person cutout
+        // Apply mask to original image
         multiplyFilter.setValue(originalImage, forKey: kCIInputImageKey)
         multiplyFilter.setValue(centeredMask, forKey: kCIInputBackgroundImageKey)
         
-        guard let maskedPerson = multiplyFilter.outputImage else { return nil }
+        guard let maskedPerson = multiplyFilter.outputImage else {
+            print("Failed to apply mask to person")
+            return nil
+        }
         
-        // Then blend the masked person onto white background
-        guard let blendFilter = CIFilter(name: "CISourceOverCompositing") else { return nil }
-        blendFilter.setValue(maskedPerson, forKey: kCIInputImageKey)
-        blendFilter.setValue(whiteBackground, forKey: kCIInputBackgroundImageKey)
+        // Create inverted mask for background
+        guard let invertFilter = CIFilter(name: "CIColorInvert") else {
+            print("CIColorInvert filter not available")
+            return nil
+        }
         
-        guard let finalImage = blendFilter.outputImage else { return nil }
+        invertFilter.setValue(centeredMask, forKey: kCIInputImageKey)
+        guard let invertedMask = invertFilter.outputImage else {
+            print("Failed to invert mask")
+            return nil
+        }
         
-        // Convert back to UIImage with hardware acceleration
+        // Apply inverted mask to white background
+        guard let backgroundFilter = CIFilter(name: "CIMultiplyCompositing") else {
+            print("Background multiply filter not available")
+            return nil
+        }
+        
+        backgroundFilter.setValue(whiteBackground, forKey: kCIInputImageKey)
+        backgroundFilter.setValue(invertedMask, forKey: kCIInputBackgroundImageKey)
+        
+        guard let maskedBackground = backgroundFilter.outputImage else {
+            print("Failed to create masked background")
+            return nil
+        }
+        
+        // Combine masked person with masked background
+        guard let addFilter = CIFilter(name: "CIAdditionCompositing") else {
+            print("CIAdditionCompositing filter not available")
+            return nil
+        }
+        
+        addFilter.setValue(maskedPerson, forKey: kCIInputImageKey)
+        addFilter.setValue(maskedBackground, forKey: kCIInputBackgroundImageKey)
+        
+        guard let finalImage = addFilter.outputImage else {
+            print("Failed to combine person and background")
+            return nil
+        }
+        
+        // Convert back to UIImage
         let context = CIContext()
+        guard let cgOutputImage = context.createCGImage(finalImage, from: originalImage.extent) else {
+            print("Failed to create CGImage from final result")
+            return nil
+        }
         
-        guard let cgOutputImage = context.createCGImage(finalImage, from: originalImage.extent) else { return nil }
-        
-        // Preserve original image orientation and scale
+        // Preserve original image properties
         let originalUIImage = UIImage(cgImage: cgImage)
-        return UIImage(cgImage: cgOutputImage, scale: originalUIImage.scale, orientation: originalUIImage.imageOrientation)
+        let result = UIImage(cgImage: cgOutputImage, scale: originalUIImage.scale, orientation: originalUIImage.imageOrientation)
+        
+        print("Background removal completed successfully")
+        return result
     }
     
     /// Crops image to focus on the detected face with proper headshot framing
