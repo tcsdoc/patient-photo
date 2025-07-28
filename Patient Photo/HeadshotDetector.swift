@@ -251,11 +251,8 @@ class HeadshotDetector {
         
         guard let finalImage = blendFilter.outputImage else { return nil }
         
-        // Convert back to UIImage with high quality settings
-        let context = CIContext(options: [
-            .useSoftwareRenderer: false,
-            .highQualityResampling: true
-        ])
+        // Convert back to UIImage with hardware acceleration
+        let context = CIContext()
         
         guard let cgOutputImage = context.createCGImage(finalImage, from: originalImage.extent) else { return nil }
         
