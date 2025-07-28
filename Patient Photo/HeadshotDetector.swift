@@ -97,7 +97,7 @@ class HeadshotDetector {
                 let faceAreaPercentage = faceArea / imageArea
                 
                 // Headshot criteria
-                let minFaceArea: CGFloat = 0.25  // Face should occupy at least 25% of image
+                let minFaceArea: CGFloat = 0.10  // Face should occupy at least 10% of image
                 let maxFaceArea: CGFloat = 0.80  // But not more than 80% (too close)
                 
                 let isValidSize = faceAreaPercentage >= minFaceArea && faceAreaPercentage <= maxFaceArea
@@ -121,7 +121,7 @@ class HeadshotDetector {
                     message = "Perfect headshot! ✅"
                 } else if !isValidSize {
                     if faceAreaPercentage < minFaceArea {
-                        message = "Face too small - move closer"
+                        message = "Face too small - move a bit closer"
                     } else {
                         message = "Face too large - move back"
                     }

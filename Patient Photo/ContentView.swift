@@ -307,7 +307,7 @@ struct ContentView: View {
                             VStack(alignment: .leading, spacing: 5) {
                                 Text("• Position face in center of frame")
                                 Text("• Ensure good lighting on face")
-                                Text("• Face should fill 25-80% of image")
+                                Text("• Face can be close or distant (10-80% of image)")
                                 Text("• Only one person in photo")
                             }
                             .font(.body)
