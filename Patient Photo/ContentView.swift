@@ -702,9 +702,85 @@ struct DocumentPicker: UIViewControllerRepresentable {
 // MARK: - Helper Functions
 extension ContentView {
     private func resizeImage(_ image: UIImage, to targetSize: CGSize) -> UIImage {
-        let renderer = UIGraphicsImageRenderer(size: targetSize, format: UIGraphicsImageRendererFormat.default())
+        // Use high-quality Core Image approach instead of UIGraphicsImageRenderer
+        guard let ciImage = CIImage(image: image) else {
+            // Fallback to original UIKit method if CIImage fails
+            return resizeImageUIKit(image, to: targetSize)
+        }
         
-        return renderer.image { _ in
+        // Calculate scaling to fit within target size while maintaining aspect ratio
+        let sourceSize = ciImage.extent.size
+        let sourceAspectRatio = sourceSize.width / sourceSize.height
+        let targetAspectRatio = targetSize.width / targetSize.height
+        
+        var scaledSize: CGSize
+        
+        if sourceAspectRatio > targetAspectRatio {
+            // Source is wider, fit to height
+            scaledSize = CGSize(width: targetSize.height * sourceAspectRatio, height: targetSize.height)
+        } else {
+            // Source is taller, fit to width
+            scaledSize = CGSize(width: targetSize.width, height: targetSize.width / sourceAspectRatio)
+        }
+        
+        // Calculate scale factor
+        let scaleX = scaledSize.width / sourceSize.width
+        let scaleY = scaledSize.height / sourceSize.height
+        let scale = min(scaleX, scaleY)
+        
+        // Apply scaling transformation
+        let scaledImage = ciImage.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
+        
+        // Calculate center position for final composition
+        let xOffset = (targetSize.width - scaledImage.extent.width) / 2
+        let yOffset = (targetSize.height - scaledImage.extent.height) / 2
+        let centeredImage = scaledImage.transformed(by: CGAffineTransform(translationX: xOffset, y: yOffset))
+        
+        // Create white background
+        let whiteBackground = CIImage(color: CIColor.white).cropped(to: CGRect(origin: .zero, size: targetSize))
+        
+        // Composite scaled image over white background
+        guard let compositeFilter = CIFilter(name: "CISourceOverCompositing") else {
+            return resizeImageUIKit(image, to: targetSize)
+        }
+        
+        compositeFilter.setValue(centeredImage, forKey: kCIInputImageKey)
+        compositeFilter.setValue(whiteBackground, forKey: kCIInputBackgroundImageKey)
+        
+        guard let outputImage = compositeFilter.outputImage else {
+            return resizeImageUIKit(image, to: targetSize)
+        }
+        
+        // Render with high quality context
+        let context = CIContext(options: [
+            .useSoftwareRenderer: false,
+            .workingColorSpace: CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpaceCreateDeviceRGB()
+        ])
+        
+        guard let cgImage = context.createCGImage(outputImage, from: CGRect(origin: .zero, size: targetSize)) else {
+            return resizeImageUIKit(image, to: targetSize)
+        }
+        
+        // Create final UIImage with proper scale
+        return UIImage(cgImage: cgImage, scale: 1.0, orientation: image.imageOrientation)
+    }
+    
+    // Fallback high-quality UIKit resizing method
+    private func resizeImageUIKit(_ image: UIImage, to targetSize: CGSize) -> UIImage {
+        // Use high-quality format for UIGraphicsImageRenderer
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1.0  // Force 1x scale for consistent output
+        format.opaque = true  // Better performance for opaque images
+        format.preferredRange = .standard  // Use standard color range
+        
+        let renderer = UIGraphicsImageRenderer(size: targetSize, format: format)
+        
+        return renderer.image { context in
+            // Enable high-quality interpolation
+            context.cgContext.interpolationQuality = .high
+            context.cgContext.setShouldAntialias(true)
+            context.cgContext.setAllowsAntialiasing(true)
+            
             // Calculate the aspect ratio
             let sourceSize = image.size
             let sourceAspectRatio = sourceSize.width / sourceSize.height
@@ -729,7 +805,7 @@ extension ContentView {
             UIColor.white.setFill()
             UIRectFill(CGRect(origin: .zero, size: targetSize))
             
-            // Draw the image
+            // Draw the image with high quality
             image.draw(in: drawRect)
         }
     }

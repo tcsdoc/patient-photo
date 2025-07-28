@@ -309,8 +309,12 @@ class HeadshotDetector {
             return nil
         }
         
-        // Convert back to UIImage
-        let context = CIContext()
+        // Convert back to UIImage with high quality settings
+        let context = CIContext(options: [
+            .useSoftwareRenderer: false,
+            .workingColorSpace: CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpaceCreateDeviceRGB()
+        ])
+        
         guard let cgOutputImage = context.createCGImage(finalImage, from: originalImage.extent) else {
             print("Failed to create CGImage from final result")
             return nil

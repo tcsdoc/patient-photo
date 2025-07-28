@@ -11,10 +11,10 @@ import UIKit
 class PhotoManager: ObservableObject {
     private(set) var transferFileURL: URL?
     
-    // Simple save for transfer - no progress tracking needed for 640x480 images
+    // High-quality save for transfer - optimized for medical documentation
     func saveImageForTransfer(_ image: UIImage, filename: String) async -> Bool {
-        // Convert image to JPEG data
-        guard let imageData = image.jpegData(compressionQuality: 0.8) else {
+        // Convert image to JPEG data with high quality (0.95 for medical documentation)
+        guard let imageData = image.jpegData(compressionQuality: 0.95) else {
             return false
         }
         
