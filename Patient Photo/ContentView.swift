@@ -245,19 +245,18 @@ struct ContentView: View {
                     // Show photo preview with background removal toggle
                     if let photo = currentPhoto {
                         VStack(spacing: 15) {
-                            // Background removal toggle
-                            if result.backgroundRemovedImage != nil {
-                                HStack {
-                                    Text("Background Removal:")
-                                        .font(.headline)
-                                    
-                                    Spacer()
-                                    
-                                    Toggle("Remove Background", isOn: $useBackgroundRemoved)
-                                        .labelsHidden()
-                                }
-                                .padding(.horizontal)
+                            // Background removal toggle (always show option)
+                            HStack {
+                                Text("Background Removal:")
+                                    .font(.headline)
+                                
+                                Spacer()
+                                
+                                Toggle("Remove Background", isOn: $useBackgroundRemoved)
+                                    .labelsHidden()
+                                    .disabled(result.backgroundRemovedImage == nil)
                             }
+                            .padding(.horizontal)
                             
                             // Image preview
                             let displayImage = useBackgroundRemoved ? (result.backgroundRemovedImage ?? photo) : photo
@@ -277,15 +276,15 @@ struct ContentView: View {
                                 HStack {
                                     Image(systemName: "checkmark.circle.fill")
                                         .foregroundColor(.green)
-                                    Text("Background removal available")
+                                    Text("Clean white background ready")
                                         .font(.caption)
                                         .foregroundColor(.secondary)
                                 }
                             } else {
                                 HStack {
-                                    Image(systemName: "exclamationmark.triangle.fill")
-                                        .foregroundColor(.orange)
-                                    Text("Background removal failed")
+                                    Image(systemName: "info.circle.fill")
+                                        .foregroundColor(.blue)
+                                    Text("Background removal unavailable - using original")
                                         .font(.caption)
                                         .foregroundColor(.secondary)
                                 }

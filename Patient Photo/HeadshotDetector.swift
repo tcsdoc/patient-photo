@@ -210,36 +210,58 @@ class HeadshotDetector {
         }
     }
     
-    /// Creates an image with transparent background using the segmentation mask
+    /// Creates an image with white background using the segmentation mask
     /// - Parameters:
     ///   - cgImage: Original image
     ///   - mask: Segmentation mask from Vision
-    /// - Returns: Image with transparent background
+    /// - Returns: Image with white background, preserving original quality and dimensions
     private static func createMaskedImage(from cgImage: CGImage, mask: CVPixelBuffer) -> UIImage? {
-        let ciImage = CIImage(cgImage: cgImage)
+        let originalImage = CIImage(cgImage: cgImage)
         let maskImage = CIImage(cvPixelBuffer: mask)
         
-        // Scale mask to match original image size
-        let scaleX = ciImage.extent.width / maskImage.extent.width
-        let scaleY = ciImage.extent.height / maskImage.extent.height
-        let scaledMask = maskImage.transformed(by: CGAffineTransform(scaleX: scaleX, y: scaleY))
+        // Ensure mask covers the full original image dimensions
+        let scaleX = originalImage.extent.width / maskImage.extent.width
+        let scaleY = originalImage.extent.height / maskImage.extent.height
         
-        // Create white background
-        let whiteBackground = CIImage(color: CIColor.white).cropped(to: ciImage.extent)
+        // Use uniform scaling to maintain aspect ratio
+        let scale = min(scaleX, scaleY)
+        let scaledMask = maskImage.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
         
-        // Apply mask to blend person with white background
-        guard let filter = CIFilter(name: "CIBlendWithMask") else { return nil }
-        filter.setValue(ciImage, forKey: kCIInputImageKey)
-        filter.setValue(whiteBackground, forKey: kCIInputBackgroundImageKey)
-        filter.setValue(scaledMask, forKey: kCIInputMaskImageKey)
+        // Center the mask if needed
+        let offsetX = (originalImage.extent.width - scaledMask.extent.width) / 2
+        let offsetY = (originalImage.extent.height - scaledMask.extent.height) / 2
+        let centeredMask = scaledMask.transformed(by: CGAffineTransform(translationX: offsetX, y: offsetY))
         
-        guard let outputImage = filter.outputImage else { return nil }
+        // Create clean white background exactly matching original dimensions
+        let whiteBackground = CIImage(color: CIColor.white).cropped(to: originalImage.extent)
         
-        // Convert back to UIImage
-        let context = CIContext()
-        guard let cgOutputImage = context.createCGImage(outputImage, from: outputImage.extent) else { return nil }
+        // Use a simpler masking approach that preserves quality
+        guard let multiplyFilter = CIFilter(name: "CIMultiplyCompositing") else { return nil }
         
-        return UIImage(cgImage: cgOutputImage)
+        // First, create the person cutout
+        multiplyFilter.setValue(originalImage, forKey: kCIInputImageKey)
+        multiplyFilter.setValue(centeredMask, forKey: kCIInputBackgroundImageKey)
+        
+        guard let maskedPerson = multiplyFilter.outputImage else { return nil }
+        
+        // Then blend the masked person onto white background
+        guard let blendFilter = CIFilter(name: "CISourceOverCompositing") else { return nil }
+        blendFilter.setValue(maskedPerson, forKey: kCIInputImageKey)
+        blendFilter.setValue(whiteBackground, forKey: kCIInputBackgroundImageKey)
+        
+        guard let finalImage = blendFilter.outputImage else { return nil }
+        
+        // Convert back to UIImage with high quality settings
+        let context = CIContext(options: [
+            .useSoftwareRenderer: false,
+            .highQualityResampling: true
+        ])
+        
+        guard let cgOutputImage = context.createCGImage(finalImage, from: originalImage.extent) else { return nil }
+        
+        // Preserve original image orientation and scale
+        let originalUIImage = UIImage(cgImage: cgImage)
+        return UIImage(cgImage: cgOutputImage, scale: originalUIImage.scale, orientation: originalUIImage.imageOrientation)
     }
     
     /// Crops image to focus on the detected face with proper headshot framing
