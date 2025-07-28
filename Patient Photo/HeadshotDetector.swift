@@ -198,7 +198,7 @@ class HeadshotDetector {
                 let maskPixelBuffer = result.pixelBuffer
                 print("Person segmentation successful, creating masked image...")
                 
-                // Create masked image with white background
+                // Create masked image with professional gray background
                 let maskedImage = createMaskedImage(from: cgImage, mask: maskPixelBuffer)
                 if maskedImage != nil {
                     print("Masked image created successfully")
@@ -224,11 +224,11 @@ class HeadshotDetector {
         }
     }
     
-    /// Creates an image with white background using the segmentation mask
+    /// Creates an image with professional gray background using the segmentation mask
     /// - Parameters:
     ///   - cgImage: Original image
     ///   - mask: Segmentation mask from Vision
-    /// - Returns: Image with white background, preserving original quality and dimensions
+    /// - Returns: Image with professional gray background, preserving original quality and dimensions
     private static func createMaskedImage(from cgImage: CGImage, mask: CVPixelBuffer) -> UIImage? {
         let originalImage = CIImage(cgImage: cgImage)
         let maskImage = CIImage(cvPixelBuffer: mask)
@@ -251,10 +251,11 @@ class HeadshotDetector {
         let offsetY = (originalImage.extent.height - scaledMask.extent.height) / 2
         let centeredMask = scaledMask.transformed(by: CGAffineTransform(translationX: offsetX, y: offsetY))
         
-        // Create white background
-        let whiteBackground = CIImage(color: CIColor.white).cropped(to: originalImage.extent)
+        // Create professional light gray background (enhances all skin tones)
+        let backgroundGray = CIColor(red: 0.94, green: 0.94, blue: 0.94, alpha: 1.0) // Light gray #F0F0F0
+        let grayBackground = CIImage(color: backgroundGray).cropped(to: originalImage.extent)
         
-        // Simple approach: multiply original image with mask, then add white background
+        // Simple approach: multiply original image with mask, then add gray background
         guard let multiplyFilter = CIFilter(name: "CIMultiplyCompositing") else {
             print("CIMultiplyCompositing filter not available")
             return nil
@@ -281,13 +282,13 @@ class HeadshotDetector {
             return nil
         }
         
-        // Apply inverted mask to white background
+        // Apply inverted mask to gray background
         guard let backgroundFilter = CIFilter(name: "CIMultiplyCompositing") else {
             print("Background multiply filter not available")
             return nil
         }
         
-        backgroundFilter.setValue(whiteBackground, forKey: kCIInputImageKey)
+        backgroundFilter.setValue(grayBackground, forKey: kCIInputImageKey)
         backgroundFilter.setValue(invertedMask, forKey: kCIInputBackgroundImageKey)
         
         guard let maskedBackground = backgroundFilter.outputImage else {

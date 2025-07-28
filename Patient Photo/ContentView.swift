@@ -279,7 +279,7 @@ struct ContentView: View {
                                 HStack {
                                     Image(systemName: "checkmark.circle.fill")
                                         .foregroundColor(.green)
-                                    Text("Clean white background ready")
+                                    Text("Professional gray background ready")
                                         .font(.caption)
                                         .foregroundColor(.secondary)
                                 }
@@ -457,7 +457,7 @@ struct ContentView: View {
                             HStack {
                                 Text("Background:")
                                 Spacer()
-                                Text(useBackgroundRemoved ? "White (removed)" : "Original")
+                                Text(useBackgroundRemoved ? "Professional gray (removed)" : "Original")
                                     .fontWeight(.medium)
                             }
                             
@@ -736,16 +736,17 @@ extension ContentView {
         let yOffset = (targetSize.height - scaledImage.extent.height) / 2
         let centeredImage = scaledImage.transformed(by: CGAffineTransform(translationX: xOffset, y: yOffset))
         
-        // Create white background
-        let whiteBackground = CIImage(color: CIColor.white).cropped(to: CGRect(origin: .zero, size: targetSize))
+        // Create professional light gray background (enhances all skin tones)
+        let backgroundGray = CIColor(red: 0.94, green: 0.94, blue: 0.94, alpha: 1.0) // Light gray #F0F0F0
+        let grayBackground = CIImage(color: backgroundGray).cropped(to: CGRect(origin: .zero, size: targetSize))
         
-        // Composite scaled image over white background
+        // Composite scaled image over gray background
         guard let compositeFilter = CIFilter(name: "CISourceOverCompositing") else {
             return resizeImageUIKit(image, to: targetSize)
         }
         
         compositeFilter.setValue(centeredImage, forKey: kCIInputImageKey)
-        compositeFilter.setValue(whiteBackground, forKey: kCIInputBackgroundImageKey)
+        compositeFilter.setValue(grayBackground, forKey: kCIInputBackgroundImageKey)
         
         guard let outputImage = compositeFilter.outputImage else {
             return resizeImageUIKit(image, to: targetSize)
@@ -801,8 +802,8 @@ extension ContentView {
             let yOffset = (targetSize.height - scaledSize.height) / 2
             let drawRect = CGRect(x: xOffset, y: yOffset, width: scaledSize.width, height: scaledSize.height)
             
-            // Fill background with white
-            UIColor.white.setFill()
+            // Fill background with professional light gray
+            UIColor(red: 0.94, green: 0.94, blue: 0.94, alpha: 1.0).setFill() // Light gray #F0F0F0
             UIRectFill(CGRect(origin: .zero, size: targetSize))
             
             // Draw the image with high quality
