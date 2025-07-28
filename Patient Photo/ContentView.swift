@@ -8,6 +8,7 @@
 import SwiftUI
 import UIKit
 import UniformTypeIdentifiers
+import Vision
 
 struct ContentView: View {
     @State private var patientName = ""
@@ -17,8 +18,13 @@ struct ContentView: View {
     @State private var showingDocumentPicker = false
     @StateObject private var photoManager = PhotoManager()
     
+    // Headshot validation states
+    @State private var headshotResult: HeadshotDetector.HeadshotResult?
+    @State private var isAnalyzingHeadshot = false
+    @State private var showHeadshotGuidance = false
+    
     enum Step {
-        case nameEntry, camera, transfer, complete
+        case nameEntry, camera, headshotValidation, transfer, complete
     }
     
     // Get app version from bundle
@@ -40,7 +46,7 @@ struct ContentView: View {
                         Text("Patient Photo")
                             .font(.title2)
                             .bold()
-                        Text("Capture and Save to Server")
+                        Text("AI-Powered Headshot Capture")
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                         Text("v\(appVersion)")
@@ -64,6 +70,8 @@ struct ContentView: View {
                     nameEntryView
                 case .camera:
                     EmptyView()
+                case .headshotValidation:
+                    headshotValidationView
                 case .transfer:
                     transferView
                 case .complete:
@@ -110,7 +118,7 @@ struct ContentView: View {
                         .font(.title2)
                         .bold()
                     
-                    Text("Photo will be captured and saved to server")
+                    Text("AI will analyze photo quality and ensure proper headshot framing")
                         .font(.body)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
@@ -167,7 +175,7 @@ struct ContentView: View {
                     .font(.system(size: 80))
                     .foregroundColor(.green)
                 
-                Text("Photo Ready to Transfer")
+                Text("Headshot Ready to Transfer")
                     .font(.title2)
                     .bold()
                 
@@ -176,11 +184,11 @@ struct ContentView: View {
                         .font(.title3)
                         .fontWeight(.medium)
                     
-                    Text("✅ Photo captured (640x480)")
+                    Text("✅ AI-validated headshot (640x480)")
                         .font(.body)
                         .foregroundColor(.green)
                     
-                    Text("Ready to save to server")
+                    Text("Professional quality confirmed")
                         .font(.custom("HelveticaNeue-Medium", size: 13))
                         .foregroundColor(.secondary)
                 }
@@ -201,6 +209,153 @@ struct ContentView: View {
                     .background(Color.green)
                     .foregroundColor(.white)
                     .cornerRadius(12)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 20)
+            .background(
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(Color(.systemBlue).opacity(0.08))
+                    .shadow(color: Color(.systemBlue).opacity(0.10), radius: 8, x: 0, y: 4)
+            )
+        }
+    }
+    
+    private var headshotValidationView: some View {
+        VStack(spacing: 30) {
+            VStack(spacing: 20) {
+                if isAnalyzingHeadshot {
+                    ProgressView()
+                        .scaleEffect(1.5)
+                    Text("Analyzing Photo...")
+                        .font(.title3)
+                        .foregroundColor(.secondary)
+                } else if let result = headshotResult {
+                    // Show photo analysis results
+                    Image(systemName: result.isValidHeadshot ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                        .font(.system(size: 60))
+                        .foregroundColor(result.isValidHeadshot ? .green : .orange)
+                    
+                    Text(result.message)
+                        .font(.title3)
+                        .bold()
+                        .multilineTextAlignment(.center)
+                    
+                    // Show photo preview
+                    if let photo = currentPhoto {
+                        Image(uiImage: photo)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(height: 200)
+                            .cornerRadius(12)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(result.isValidHeadshot ? Color.green : Color.orange, lineWidth: 3)
+                            )
+                    }
+                    
+                    // Show headshot details
+                    VStack(spacing: 8) {
+                        HStack {
+                            Text("Faces detected:")
+                            Spacer()
+                            Text("\(result.faceCount)")
+                                .fontWeight(.medium)
+                        }
+                        
+                        if result.faceCount > 0 {
+                            HStack {
+                                Text("Face coverage:")
+                                Spacer()
+                                Text("\(Int(result.faceArea * 100))%")
+                                    .fontWeight(.medium)
+                            }
+                        }
+                    }
+                    .padding()
+                    .background(Color(.systemGray6))
+                    .cornerRadius(8)
+                }
+            }
+            
+            // Action buttons
+            VStack(spacing: 15) {
+                if let result = headshotResult {
+                    if result.isValidHeadshot {
+                        // Use this photo
+                        Button(action: processValidatedPhoto) {
+                            HStack(spacing: 12) {
+                                Image(systemName: "checkmark.circle")
+                                    .font(.title3)
+                                Text("Use This Photo")
+                                    .font(.title3)
+                                    .fontWeight(.medium)
+                            }
+                            .frame(minWidth: 280)
+                            .frame(height: 60)
+                            .padding(.horizontal, 20)
+                            .background(Color.green)
+                            .foregroundColor(.white)
+                            .cornerRadius(12)
+                        }
+                    } else {
+                        // Show guidance and retake option
+                        VStack(spacing: 10) {
+                            Text("💡 Headshot Tips:")
+                                .font(.headline)
+                            
+                            VStack(alignment: .leading, spacing: 5) {
+                                Text("• Position face in center of frame")
+                                Text("• Ensure good lighting on face")
+                                Text("• Face should fill 25-80% of image")
+                                Text("• Only one person in photo")
+                            }
+                            .font(.body)
+                            .foregroundColor(.secondary)
+                        }
+                        .padding()
+                        .background(Color(.systemBlue).opacity(0.1))
+                        .cornerRadius(12)
+                    }
+                    
+                    // Retake photo option
+                    Button(action: {
+                        currentStep = .camera
+                        headshotResult = nil
+                    }) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "camera.rotate")
+                                .font(.title3)
+                            Text("Retake Photo")
+                                .font(.title3)
+                                .fontWeight(.medium)
+                        }
+                        .frame(minWidth: 280)
+                        .frame(height: 60)
+                        .padding(.horizontal, 20)
+                        .background(Color.blue)
+                        .foregroundColor(.white)
+                        .cornerRadius(12)
+                    }
+                    
+                    // Use anyway option (for non-ideal photos)
+                    if !result.isValidHeadshot {
+                        Button(action: processValidatedPhoto) {
+                            HStack(spacing: 12) {
+                                Image(systemName: "photo")
+                                    .font(.title3)
+                                Text("Use Anyway")
+                                    .font(.title3)
+                                    .fontWeight(.medium)
+                            }
+                            .frame(minWidth: 280)
+                            .frame(height: 60)
+                            .padding(.horizontal, 20)
+                            .background(Color.gray)
+                            .foregroundColor(.white)
+                            .cornerRadius(12)
+                        }
+                    }
                 }
             }
             .padding(.horizontal, 16)
@@ -291,8 +446,32 @@ struct ContentView: View {
     private func handleImagePicked() {
         guard let image = currentPhoto else { return }
         
+        // Move to headshot validation step first
+        currentStep = .headshotValidation
+        
+        // Analyze headshot quality
+        Task {
+            await MainActor.run {
+                isAnalyzingHeadshot = true
+            }
+            
+            let result = await HeadshotDetector.analyzeHeadshot(image)
+            
+            await MainActor.run {
+                headshotResult = result
+                isAnalyzingHeadshot = false
+            }
+        }
+    }
+    
+    private func processValidatedPhoto() {
+        guard let image = currentPhoto else { return }
+        
+        // Use cropped image if available and valid, otherwise use original
+        let finalImage = headshotResult?.croppedImage ?? image
+        
         // Resize the image to 640x480 before saving
-        let resizedImage = resizeImage(image, to: CGSize(width: 640, height: 480))
+        let resizedImage = resizeImage(finalImage, to: CGSize(width: 640, height: 480))
         
         // Save photo for transfer
         Task {
