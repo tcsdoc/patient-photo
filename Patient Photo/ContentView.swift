@@ -23,9 +23,10 @@ struct ContentView: View {
     @State private var isAnalyzingHeadshot = false
     @State private var showHeadshotGuidance = false
     @State private var useBackgroundRemoved = false
+    @State private var finalProcessedImage: UIImage?
     
     enum Step {
-        case nameEntry, camera, headshotValidation, transfer, complete
+        case nameEntry, camera, headshotValidation, finalPreview, transfer, complete
     }
     
     // Get app version from bundle
@@ -73,6 +74,8 @@ struct ContentView: View {
                     EmptyView()
                 case .headshotValidation:
                     headshotValidationView
+                case .finalPreview:
+                    finalPreviewView
                 case .transfer:
                     transferView
                 case .complete:
@@ -406,6 +409,121 @@ struct ContentView: View {
         }
     }
     
+    private var finalPreviewView: some View {
+        VStack(spacing: 30) {
+            VStack(spacing: 20) {
+                Image(systemName: "doc.viewfinder")
+                    .font(.system(size: 60))
+                    .foregroundColor(.blue)
+                
+                Text("Final Preview")
+                    .font(.title2)
+                    .bold()
+                
+                Text("This is exactly what will be saved to the server")
+                    .font(.body)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+            
+            // Show final processed image
+            if let finalImage = finalProcessedImage {
+                VStack(spacing: 15) {
+                    Text("Patient: \(patientName)")
+                        .font(.title3)
+                        .fontWeight(.medium)
+                    
+                    // Final image preview with dimensions
+                    VStack(spacing: 10) {
+                        Image(uiImage: finalImage)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(height: 240)
+                            .cornerRadius(12)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(Color.blue, lineWidth: 3)
+                            )
+                        
+                        // Show final specifications
+                        VStack(spacing: 5) {
+                            HStack {
+                                Text("Dimensions:")
+                                Spacer()
+                                Text("640 × 480 pixels")
+                                    .fontWeight(.medium)
+                            }
+                            
+                            HStack {
+                                Text("Background:")
+                                Spacer()
+                                Text(useBackgroundRemoved ? "White (removed)" : "Original")
+                                    .fontWeight(.medium)
+                            }
+                            
+                            HStack {
+                                Text("File format:")
+                                Spacer()
+                                Text("JPEG")
+                                    .fontWeight(.medium)
+                            }
+                        }
+                        .padding()
+                        .background(Color(.systemGray6))
+                        .cornerRadius(8)
+                    }
+                }
+            }
+            
+            // Action buttons
+            VStack(spacing: 15) {
+                // Save to server button
+                Button(action: saveToServer) {
+                    HStack(spacing: 12) {
+                        Image(systemName: "icloud.and.arrow.up")
+                            .font(.title3)
+                        Text("Save to Server")
+                            .font(.title3)
+                            .fontWeight(.medium)
+                    }
+                    .frame(minWidth: 280)
+                    .frame(height: 60)
+                    .padding(.horizontal, 20)
+                    .background(Color.green)
+                    .foregroundColor(.white)
+                    .cornerRadius(12)
+                }
+                
+                // Go back to make changes
+                Button(action: {
+                    currentStep = .headshotValidation
+                    finalProcessedImage = nil
+                }) {
+                    HStack(spacing: 12) {
+                        Image(systemName: "arrow.left.circle")
+                            .font(.title3)
+                        Text("Make Changes")
+                            .font(.title3)
+                            .fontWeight(.medium)
+                    }
+                    .frame(minWidth: 280)
+                    .frame(height: 60)
+                    .padding(.horizontal, 20)
+                    .background(Color.blue)
+                    .foregroundColor(.white)
+                    .cornerRadius(12)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 20)
+            .background(
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(Color(.systemBlue).opacity(0.08))
+                    .shadow(color: Color(.systemBlue).opacity(0.10), radius: 8, x: 0, y: 4)
+            )
+        }
+    }
+    
     private var completeView: some View {
         VStack(spacing: 40) {
             VStack(spacing: 20) {
@@ -506,22 +624,30 @@ struct ContentView: View {
         guard let image = currentPhoto else { return }
         
         // Choose image based on user preference and availability
-        let finalImage: UIImage
+        let chosenImage: UIImage
         if useBackgroundRemoved, let backgroundRemovedImage = headshotResult?.backgroundRemovedImage {
-            finalImage = backgroundRemovedImage
+            chosenImage = backgroundRemovedImage
         } else if let croppedImage = headshotResult?.croppedImage {
-            finalImage = croppedImage
+            chosenImage = croppedImage
         } else {
-            finalImage = image
+            chosenImage = image
         }
         
-        // Resize the image to 640x480 before saving
-        let resizedImage = resizeImage(finalImage, to: CGSize(width: 640, height: 480))
+        // Create the final processed image (640x480) for preview
+        let resizedImage = resizeImage(chosenImage, to: CGSize(width: 640, height: 480))
+        finalProcessedImage = resizedImage
+        
+        // Move to final preview step
+        currentStep = .finalPreview
+    }
+    
+    private func saveToServer() {
+        guard let finalImage = finalProcessedImage else { return }
         
         // Save photo for transfer
         Task {
             let filename = createFilename()
-            let success = await photoManager.saveImageForTransfer(resizedImage, filename: filename)
+            let success = await photoManager.saveImageForTransfer(finalImage, filename: filename)
             
             await MainActor.run {
                 if success {
