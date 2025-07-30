@@ -22,7 +22,6 @@ struct ContentView: View {
     @State private var headshotResult: HeadshotDetector.HeadshotResult?
     @State private var isAnalyzingHeadshot = false
     @State private var showHeadshotGuidance = false
-    @State private var useBackgroundRemoved = false
     @State private var finalProcessedImage: UIImage?
     
     enum Step {
@@ -112,62 +111,74 @@ struct ContentView: View {
         ZStack {
             LinearGradient(gradient: Gradient(colors: [Color(.systemTeal).opacity(0.18), Color(.systemGreen).opacity(0.12)]), startPoint: .top, endPoint: .bottom)
                 .ignoresSafeArea()
-            VStack(spacing: 40) {
-                VStack(spacing: 20) {
-                    Image(systemName: "person.badge.plus")
-                        .font(.system(size: 60))
-                        .foregroundColor(.blue)
+            
+            ScrollView {
+                VStack(spacing: 30) {
+                    // Top spacer to push content higher up
+                    Spacer()
+                        .frame(height: 60)
                     
-                    Text("Enter Patient Name")
-                        .font(.title2)
-                        .bold()
-                    
-                    Text("AI will analyze photo quality and ensure proper headshot framing")
-                        .font(.body)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                }
-                
-                ZStack {
-                    RoundedRectangle(cornerRadius: 20)
-                        .fill(Color(.systemBlue).opacity(0.08))
-                        .shadow(color: Color(.systemBlue).opacity(0.10), radius: 8, x: 0, y: 4)
                     VStack(spacing: 20) {
-                        TextField("Patient Name", text: $patientName)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-                            .font(.title3)
-                            .frame(width: 300)
-                            .multilineTextAlignment(.center)
-                            .autocapitalization(.words)
-                            .disableAutocorrection(true)
-                            .onChange(of: patientName) { newValue in
-                                patientName = String(newValue.prefix(16))
-                            }
+                        Image(systemName: "person.badge.plus")
+                            .font(.system(size: 50))
+                            .foregroundColor(.blue)
                         
-                        Button(action: {
-                            if isPatientNameValid {
-                                currentStep = .camera
-                            }
-                        }) {
-                            HStack(spacing: 12) {
-                                Image(systemName: "camera")
-                                    .font(.title3)
-                                Text("Take Photo")
-                                    .font(.title3)
-                                    .fontWeight(.medium)
-                            }
-                            .frame(height: 60)
-                            .frame(width: 300)
+                        Text("Enter Patient Name")
+                            .font(.title2)
+                            .bold()
+                        
+                        Text("AI will analyze photo quality and ensure proper headshot framing")
+                            .font(.body)
+                            .foregroundColor(.secondary)
                             .multilineTextAlignment(.center)
-                            .background(isPatientNameValid ? Color.blue : Color.gray)
-                            .foregroundColor(.white)
-                            .cornerRadius(12)
-                        }
-                        .disabled(!isPatientNameValid)
+                            .padding(.horizontal, 40)
                     }
-                    .padding(32)
+                    
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 20)
+                            .fill(Color(.systemBlue).opacity(0.08))
+                            .shadow(color: Color(.systemBlue).opacity(0.10), radius: 8, x: 0, y: 4)
+                        VStack(spacing: 20) {
+                            TextField("Patient Name", text: $patientName)
+                                .textFieldStyle(RoundedBorderTextFieldStyle())
+                                .font(.title3)
+                                .frame(width: 300)
+                                .multilineTextAlignment(.center)
+                                .autocapitalization(.words)
+                                .disableAutocorrection(true)
+                                .onChange(of: patientName) { newValue in
+                                    patientName = String(newValue.prefix(16))
+                                }
+                            
+                            Button(action: {
+                                if isPatientNameValid {
+                                    currentStep = .camera
+                                }
+                            }) {
+                                HStack(spacing: 12) {
+                                    Image(systemName: "camera")
+                                        .font(.title3)
+                                    Text("Take Photo")
+                                        .font(.title3)
+                                        .fontWeight(.medium)
+                                }
+                                .frame(height: 60)
+                                .frame(width: 300)
+                                .multilineTextAlignment(.center)
+                                .background(isPatientNameValid ? Color.blue : Color.gray)
+                                .foregroundColor(.white)
+                                .cornerRadius(12)
+                            }
+                            .disabled(!isPatientNameValid)
+                        }
+                        .padding(32)
+                    }
+                    .padding(.horizontal, 16)
+                    
+                    // Bottom spacer to ensure scrollability above keyboard
+                    Spacer()
+                        .frame(height: 200)
                 }
-                .padding(.horizontal, 16)
             }
         }
     }
@@ -245,26 +256,11 @@ struct ContentView: View {
                         .bold()
                         .multilineTextAlignment(.center)
                     
-                    // Show photo preview with background removal toggle
+                    // Show photo preview
                     if let photo = currentPhoto {
                         VStack(spacing: 15) {
-                            // Background removal toggle (always show option)
-                            HStack {
-                                Text("Background Removal:")
-                                    .font(.headline)
-                                
-                                Spacer()
-                                
-                                Toggle("Remove Background", isOn: $useBackgroundRemoved)
-                                    .labelsHidden()
-                                    .disabled(result.backgroundRemovedImage == nil)
-                            }
-                            .padding(.horizontal)
-                            
                             // Image preview
-                            let displayImage = useBackgroundRemoved ? (result.backgroundRemovedImage ?? photo) : photo
-                            
-                            Image(uiImage: displayImage)
+                            Image(uiImage: photo)
                                 .resizable()
                                 .scaledToFit()
                                 .frame(height: 200)
@@ -273,25 +269,6 @@ struct ContentView: View {
                                     RoundedRectangle(cornerRadius: 12)
                                         .stroke(result.isValidHeadshot ? Color.green : Color.orange, lineWidth: 3)
                                 )
-                            
-                            // Show background removal status
-                            if result.backgroundRemovedImage != nil {
-                                HStack {
-                                    Image(systemName: "checkmark.circle.fill")
-                                        .foregroundColor(.green)
-                                    Text("Professional gray background ready")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                }
-                            } else {
-                                HStack {
-                                    Image(systemName: "info.circle.fill")
-                                        .foregroundColor(.blue)
-                                    Text("Background removal unavailable - using original")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                }
-                            }
                         }
                     }
                     
@@ -340,43 +317,45 @@ struct ContentView: View {
                             .cornerRadius(12)
                         }
                     } else {
-                        // Show guidance and retake option
-                        VStack(spacing: 10) {
-                            Text("💡 Headshot Tips:")
-                                .font(.headline)
-                            
-                            VStack(alignment: .leading, spacing: 5) {
-                                Text("• Position face in center of frame")
-                                Text("• Ensure good lighting on face")
-                                Text("• Face can be close or distant (10-80% of image)")
-                                Text("• Only one person in photo")
+                        // Show guidance and retake option on same line for better iPad layout
+                        HStack(spacing: 15) {
+                            // Headshot Tips box on the left
+                            VStack(spacing: 10) {
+                                Text("💡 Headshot Tips:")
+                                    .font(.headline)
+                                
+                                VStack(alignment: .leading, spacing: 5) {
+                                    Text("• Position face in center of frame")
+                                    Text("• Ensure good lighting on face")
+                                    Text("• Face can be close or distant (10-80% of image)")
+                                    Text("• Only one person in photo")
+                                }
+                                .font(.body)
+                                .foregroundColor(.secondary)
                             }
-                            .font(.body)
-                            .foregroundColor(.secondary)
+                            .padding()
+                            .background(Color(.systemBlue).opacity(0.1))
+                            .cornerRadius(12)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            
+                            // Retake photo button on the right
+                            Button(action: {
+                                currentStep = .camera
+                                headshotResult = nil
+                            }) {
+                                HStack(spacing: 12) {
+                                    Image(systemName: "camera.rotate")
+                                        .font(.title3)
+                                    Text("Retake Photo")
+                                        .font(.title3)
+                                        .fontWeight(.medium)
+                                }
+                                .frame(width: 200, height: 60)
+                                .background(Color.blue)
+                                .foregroundColor(.white)
+                                .cornerRadius(12)
+                            }
                         }
-                        .padding()
-                        .background(Color(.systemBlue).opacity(0.1))
-                        .cornerRadius(12)
-                    }
-                    
-                    // Retake photo option
-                    Button(action: {
-                        currentStep = .camera
-                        headshotResult = nil
-                    }) {
-                        HStack(spacing: 12) {
-                            Image(systemName: "camera.rotate")
-                                .font(.title3)
-                            Text("Retake Photo")
-                                .font(.title3)
-                                .fontWeight(.medium)
-                        }
-                        .frame(minWidth: 280)
-                        .frame(height: 60)
-                        .padding(.horizontal, 20)
-                        .background(Color.blue)
-                        .foregroundColor(.white)
-                        .cornerRadius(12)
                     }
                     
                     // Use anyway option (for non-ideal photos)
@@ -457,7 +436,7 @@ struct ContentView: View {
                             HStack {
                                 Text("Background:")
                                 Spacer()
-                                Text(useBackgroundRemoved ? "Professional gray (removed)" : "Original")
+                                Text("Original")
                                     .fontWeight(.medium)
                             }
                             
@@ -475,41 +454,38 @@ struct ContentView: View {
                 }
             }
             
-            // Action buttons
-            VStack(spacing: 15) {
-                // Save to server button
+            // Action buttons - side by side for better iPad layout
+            HStack(spacing: 15) {
+                // Retake photo (left side)
+                Button(action: {
+                    currentStep = .camera
+                    finalProcessedImage = nil
+                    headshotResult = nil
+                }) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "camera.rotate")
+                            .font(.title3)
+                        Text("Retake Photo")
+                            .font(.title3)
+                            .fontWeight(.medium)
+                    }
+                    .frame(width: 200, height: 60)
+                    .background(Color.blue)
+                    .foregroundColor(.white)
+                    .cornerRadius(12)
+                }
+                
+                // Save to server button (right side)
                 Button(action: saveToServer) {
-                    HStack(spacing: 12) {
+                    HStack(spacing: 8) {
                         Image(systemName: "icloud.and.arrow.up")
                             .font(.title3)
                         Text("Save to Server")
                             .font(.title3)
                             .fontWeight(.medium)
                     }
-                    .frame(minWidth: 280)
-                    .frame(height: 60)
-                    .padding(.horizontal, 20)
+                    .frame(width: 200, height: 60)
                     .background(Color.green)
-                    .foregroundColor(.white)
-                    .cornerRadius(12)
-                }
-                
-                // Go back to make changes
-                Button(action: {
-                    currentStep = .headshotValidation
-                    finalProcessedImage = nil
-                }) {
-                    HStack(spacing: 12) {
-                        Image(systemName: "arrow.left.circle")
-                            .font(.title3)
-                        Text("Make Changes")
-                            .font(.title3)
-                            .fontWeight(.medium)
-                    }
-                    .frame(minWidth: 280)
-                    .frame(height: 60)
-                    .padding(.horizontal, 20)
-                    .background(Color.blue)
                     .foregroundColor(.white)
                     .cornerRadius(12)
                 }
@@ -623,11 +599,9 @@ struct ContentView: View {
     private func processValidatedPhoto() {
         guard let image = currentPhoto else { return }
         
-        // Choose image based on user preference and availability
+        // Choose image based on availability - use cropped if available, otherwise original
         let chosenImage: UIImage
-        if useBackgroundRemoved, let backgroundRemovedImage = headshotResult?.backgroundRemovedImage {
-            chosenImage = backgroundRemovedImage
-        } else if let croppedImage = headshotResult?.croppedImage {
+        if let croppedImage = headshotResult?.croppedImage {
             chosenImage = croppedImage
         } else {
             chosenImage = image
@@ -708,33 +682,29 @@ extension ContentView {
             return resizeImageUIKit(image, to: targetSize)
         }
         
-        // Calculate scaling to fit within target size while maintaining aspect ratio
+        // Calculate scaling to preserve as much content as possible while fitting in target size
         let sourceSize = ciImage.extent.size
         let sourceAspectRatio = sourceSize.width / sourceSize.height
         let targetAspectRatio = targetSize.width / targetSize.height
         
-        var scaledSize: CGSize
+        // Use "fit inside" scaling to preserve maximum content (no cropping)
+        let scaleX = targetSize.width / sourceSize.width
+        let scaleY = targetSize.height / sourceSize.height
+        let scale = min(scaleX, scaleY) // Use smaller scale to ensure entire image fits
         
-        if sourceAspectRatio > targetAspectRatio {
-            // Source is wider, fit to height
-            scaledSize = CGSize(width: targetSize.height * sourceAspectRatio, height: targetSize.height)
-        } else {
-            // Source is taller, fit to width
-            scaledSize = CGSize(width: targetSize.width, height: targetSize.width / sourceAspectRatio)
-        }
-        
-        // Calculate scale factor
-        let scaleX = scaledSize.width / sourceSize.width
-        let scaleY = scaledSize.height / sourceSize.height
-        let scale = min(scaleX, scaleY)
+        let scaledSize = CGSize(
+            width: sourceSize.width * scale,
+            height: sourceSize.height * scale
+        )
         
         // Apply scaling transformation
         let scaledImage = ciImage.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
         
-        // Calculate center position for final composition
+        // Calculate position for final composition - bias toward preserving top/bottom content
         let xOffset = (targetSize.width - scaledImage.extent.width) / 2
-        let yOffset = (targetSize.height - scaledImage.extent.height) / 2
-        let centeredImage = scaledImage.transformed(by: CGAffineTransform(translationX: xOffset, y: yOffset))
+        // Bias toward top of image (typical headshot orientation) - use less strict centering
+        let yOffset = max(0, (targetSize.height - scaledImage.extent.height) * 0.3)
+        let positionedImage = scaledImage.transformed(by: CGAffineTransform(translationX: xOffset, y: yOffset))
         
         // Create professional light gray background (enhances all skin tones)
         let backgroundGray = CIColor(red: 0.94, green: 0.94, blue: 0.94, alpha: 1.0) // Light gray #F0F0F0
@@ -745,7 +715,7 @@ extension ContentView {
             return resizeImageUIKit(image, to: targetSize)
         }
         
-        compositeFilter.setValue(centeredImage, forKey: kCIInputImageKey)
+        compositeFilter.setValue(positionedImage, forKey: kCIInputImageKey)
         compositeFilter.setValue(grayBackground, forKey: kCIInputBackgroundImageKey)
         
         guard let outputImage = compositeFilter.outputImage else {
@@ -782,24 +752,23 @@ extension ContentView {
             context.cgContext.setShouldAntialias(true)
             context.cgContext.setAllowsAntialiasing(true)
             
-            // Calculate the aspect ratio
+            // Calculate scaling to preserve as much content as possible (no cropping)
             let sourceSize = image.size
-            let sourceAspectRatio = sourceSize.width / sourceSize.height
-            let targetAspectRatio = targetSize.width / targetSize.height
             
-            var scaledSize: CGSize
+            // Use "fit inside" scaling to preserve maximum content
+            let scaleX = targetSize.width / sourceSize.width
+            let scaleY = targetSize.height / sourceSize.height
+            let scale = min(scaleX, scaleY) // Use smaller scale to ensure entire image fits
             
-            if sourceAspectRatio > targetAspectRatio {
-                // Source is wider, fit to height
-                scaledSize = CGSize(width: targetSize.height * sourceAspectRatio, height: targetSize.height)
-            } else {
-                // Source is taller, fit to width
-                scaledSize = CGSize(width: targetSize.width, height: targetSize.width / sourceAspectRatio)
-            }
+            let scaledSize = CGSize(
+                width: sourceSize.width * scale,
+                height: sourceSize.height * scale
+            )
             
-            // Calculate center position for cropping
+            // Calculate position for positioning - bias toward preserving top/bottom content
             let xOffset = (targetSize.width - scaledSize.width) / 2
-            let yOffset = (targetSize.height - scaledSize.height) / 2
+            // Bias toward top of image (typical headshot orientation) - use less strict centering
+            let yOffset = max(0, (targetSize.height - scaledSize.height) * 0.3)
             let drawRect = CGRect(x: xOffset, y: yOffset, width: scaledSize.width, height: scaledSize.height)
             
             // Fill background with professional light gray

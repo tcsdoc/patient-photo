@@ -16,7 +16,6 @@ class HeadshotDetector {
         let faceArea: CGFloat
         let faceBoundingBox: CGRect?
         let croppedImage: UIImage?
-        let backgroundRemovedImage: UIImage?
         let message: String
     }
     
@@ -31,13 +30,11 @@ class HeadshotDetector {
                 faceArea: 0,
                 faceBoundingBox: nil,
                 croppedImage: nil,
-                backgroundRemovedImage: nil,
                 message: "Unable to process image"
             )
         }
         
-        // Perform background removal first
-        let backgroundRemovedImage = await removeBackground(from: image)
+
         
         return await withCheckedContinuation { continuation in
             let request = VNDetectFaceRectanglesRequest { request, error in
@@ -49,7 +46,6 @@ class HeadshotDetector {
                         faceArea: 0,
                         faceBoundingBox: nil,
                         croppedImage: nil,
-                        backgroundRemovedImage: backgroundRemovedImage,
                         message: "Face detection failed"
                     ))
                     return
@@ -62,7 +58,6 @@ class HeadshotDetector {
                         faceArea: 0,
                         faceBoundingBox: nil,
                         croppedImage: nil,
-                        backgroundRemovedImage: backgroundRemovedImage,
                         message: "No face detection results"
                     ))
                     return
@@ -79,7 +74,6 @@ class HeadshotDetector {
                         faceArea: 0,
                         faceBoundingBox: nil,
                         croppedImage: nil,
-                        backgroundRemovedImage: backgroundRemovedImage,
                         message: message
                     ))
                     return
@@ -143,7 +137,6 @@ class HeadshotDetector {
                     faceArea: faceAreaPercentage,
                     faceBoundingBox: faceRect,
                     croppedImage: croppedImage,
-                    backgroundRemovedImage: backgroundRemovedImage,
                     message: message
                 ))
             }
@@ -162,172 +155,12 @@ class HeadshotDetector {
                     faceArea: 0,
                     faceBoundingBox: nil,
                     croppedImage: nil,
-                    backgroundRemovedImage: backgroundRemovedImage,
                     message: "Detection error: \(error.localizedDescription)"
                 ))
             }
         }
     }
-    
-    /// Removes background from image using person segmentation
-    /// - Parameter image: Original image
-    /// - Returns: Image with background removed (transparent) or nil if segmentation fails
-    static func removeBackground(from image: UIImage) async -> UIImage? {
-        guard let cgImage = image.cgImage else { return nil }
-        
-        return await withCheckedContinuation { continuation in
-            let request = VNGeneratePersonSegmentationRequest { request, error in
-                if let error = error {
-                    print("Person segmentation error: \(error.localizedDescription)")
-                    continuation.resume(returning: nil)
-                    return
-                }
-                
-                guard let results = request.results, !results.isEmpty else {
-                    print("No person segmentation results returned")
-                    continuation.resume(returning: nil)
-                    return
-                }
-                
-                guard let result = results.first as? VNPixelBufferObservation else {
-                    print("Person segmentation result is not VNPixelBufferObservation")
-                    continuation.resume(returning: nil)
-                    return
-                }
-                
-                let maskPixelBuffer = result.pixelBuffer
-                print("Person segmentation successful, creating masked image...")
-                
-                // Create masked image with professional gray background
-                let maskedImage = createMaskedImage(from: cgImage, mask: maskPixelBuffer)
-                if maskedImage != nil {
-                    print("Masked image created successfully")
-                } else {
-                    print("Failed to create masked image")
-                }
-                continuation.resume(returning: maskedImage)
-            }
-            
-            // Configure for highest quality and compatibility
-            request.qualityLevel = .accurate
-            request.outputPixelFormat = kCVPixelFormatType_OneComponent8
-            
-            print("Starting person segmentation request...")
-            
-            let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
-            do {
-                try handler.perform([request])
-            } catch {
-                print("Error performing person segmentation: \(error)")
-                continuation.resume(returning: nil)
-            }
-        }
-    }
-    
-    /// Creates an image with professional gray background using the segmentation mask
-    /// - Parameters:
-    ///   - cgImage: Original image
-    ///   - mask: Segmentation mask from Vision
-    /// - Returns: Image with professional gray background, preserving original quality and dimensions
-    private static func createMaskedImage(from cgImage: CGImage, mask: CVPixelBuffer) -> UIImage? {
-        let originalImage = CIImage(cgImage: cgImage)
-        let maskImage = CIImage(cvPixelBuffer: mask)
-        
-        print("Original image size: \(originalImage.extent)")
-        print("Mask image size: \(maskImage.extent)")
-        
-        // Scale mask to exactly match original image dimensions (fill entire image)
-        let scaleX = originalImage.extent.width / maskImage.extent.width
-        let scaleY = originalImage.extent.height / maskImage.extent.height
-        
-        // Use the larger scale to ensure mask covers entire image (prevent clipping)
-        let scale = max(scaleX, scaleY)
-        let scaledMask = maskImage.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
-        
-        print("Scale used: \(scale), Scaled mask size: \(scaledMask.extent)")
-        
-        // Center the mask properly
-        let offsetX = (originalImage.extent.width - scaledMask.extent.width) / 2
-        let offsetY = (originalImage.extent.height - scaledMask.extent.height) / 2
-        let centeredMask = scaledMask.transformed(by: CGAffineTransform(translationX: offsetX, y: offsetY))
-        
-        // Create professional light gray background (enhances all skin tones)
-        let backgroundGray = CIColor(red: 0.94, green: 0.94, blue: 0.94, alpha: 1.0) // Light gray #F0F0F0
-        let grayBackground = CIImage(color: backgroundGray).cropped(to: originalImage.extent)
-        
-        // Simple approach: multiply original image with mask, then add gray background
-        guard let multiplyFilter = CIFilter(name: "CIMultiplyCompositing") else {
-            print("CIMultiplyCompositing filter not available")
-            return nil
-        }
-        
-        // Apply mask to original image
-        multiplyFilter.setValue(originalImage, forKey: kCIInputImageKey)
-        multiplyFilter.setValue(centeredMask, forKey: kCIInputBackgroundImageKey)
-        
-        guard let maskedPerson = multiplyFilter.outputImage else {
-            print("Failed to apply mask to person")
-            return nil
-        }
-        
-        // Create inverted mask for background
-        guard let invertFilter = CIFilter(name: "CIColorInvert") else {
-            print("CIColorInvert filter not available")
-            return nil
-        }
-        
-        invertFilter.setValue(centeredMask, forKey: kCIInputImageKey)
-        guard let invertedMask = invertFilter.outputImage else {
-            print("Failed to invert mask")
-            return nil
-        }
-        
-        // Apply inverted mask to gray background
-        guard let backgroundFilter = CIFilter(name: "CIMultiplyCompositing") else {
-            print("Background multiply filter not available")
-            return nil
-        }
-        
-        backgroundFilter.setValue(grayBackground, forKey: kCIInputImageKey)
-        backgroundFilter.setValue(invertedMask, forKey: kCIInputBackgroundImageKey)
-        
-        guard let maskedBackground = backgroundFilter.outputImage else {
-            print("Failed to create masked background")
-            return nil
-        }
-        
-        // Combine masked person with masked background
-        guard let addFilter = CIFilter(name: "CIAdditionCompositing") else {
-            print("CIAdditionCompositing filter not available")
-            return nil
-        }
-        
-        addFilter.setValue(maskedPerson, forKey: kCIInputImageKey)
-        addFilter.setValue(maskedBackground, forKey: kCIInputBackgroundImageKey)
-        
-        guard let finalImage = addFilter.outputImage else {
-            print("Failed to combine person and background")
-            return nil
-        }
-        
-        // Convert back to UIImage with high quality settings
-        let context = CIContext(options: [
-            .useSoftwareRenderer: false,
-            .workingColorSpace: CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpaceCreateDeviceRGB()
-        ])
-        
-        guard let cgOutputImage = context.createCGImage(finalImage, from: originalImage.extent) else {
-            print("Failed to create CGImage from final result")
-            return nil
-        }
-        
-        // Preserve original image properties
-        let originalUIImage = UIImage(cgImage: cgImage)
-        let result = UIImage(cgImage: cgOutputImage, scale: originalUIImage.scale, orientation: originalUIImage.imageOrientation)
-        
-        print("Background removal completed successfully")
-        return result
-    }
+
     
     /// Crops image to focus on the detected face with proper headshot framing
     /// - Parameters:
@@ -356,6 +189,7 @@ class HeadshotDetector {
         
         return UIImage(cgImage: croppedCGImage, scale: image.scale, orientation: image.imageOrientation)
     }
+
     
     /// Quick validation function for basic use cases
     /// - Parameter image: Image to validate
