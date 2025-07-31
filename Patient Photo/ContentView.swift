@@ -732,8 +732,8 @@ extension ContentView {
             return resizeImageUIKit(image, to: targetSize)
         }
         
-        // Create final UIImage with proper scale
-        return UIImage(cgImage: cgImage, scale: 1.0, orientation: image.imageOrientation)
+        // Create final UIImage with normalized orientation (Core Image has already applied transformations)
+        return UIImage(cgImage: cgImage, scale: 1.0, orientation: .up)
     }
     
     // Fallback high-quality UIKit resizing method
