@@ -682,23 +682,19 @@ extension ContentView {
             return resizeImageUIKit(image, to: targetSize)
         }
         
+        // Apply orientation transformation to ensure correct pixel orientation
+        let orientedImage = ciImage.oriented(forExifOrientation: Int32(image.imageOrientation.rawValue))
+        
         // Calculate scaling to preserve as much content as possible while fitting in target size
-        let sourceSize = ciImage.extent.size
-        let sourceAspectRatio = sourceSize.width / sourceSize.height
-        let targetAspectRatio = targetSize.width / targetSize.height
+        let sourceSize = orientedImage.extent.size
         
         // Use "fit inside" scaling to preserve maximum content (no cropping)
         let scaleX = targetSize.width / sourceSize.width
         let scaleY = targetSize.height / sourceSize.height
         let scale = min(scaleX, scaleY) // Use smaller scale to ensure entire image fits
         
-        let scaledSize = CGSize(
-            width: sourceSize.width * scale,
-            height: sourceSize.height * scale
-        )
-        
         // Apply scaling transformation
-        let scaledImage = ciImage.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
+        let scaledImage = orientedImage.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
         
         // Calculate position for final composition - bias toward preserving top/bottom content
         let xOffset = (targetSize.width - scaledImage.extent.width) / 2
