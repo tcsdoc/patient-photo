@@ -676,17 +676,17 @@ struct DocumentPicker: UIViewControllerRepresentable {
 // MARK: - Helper Functions
 extension ContentView {
     private func resizeImage(_ image: UIImage, to targetSize: CGSize) -> UIImage {
-        // Use high-quality Core Image approach instead of UIGraphicsImageRenderer
-        guard let ciImage = CIImage(image: image) else {
+        // FIRST: Normalize image orientation using UIKit to ensure consistent orientation
+        let normalizedImage = normalizeImageOrientation(image)
+        
+        // Use high-quality Core Image approach with normalized image
+        guard let ciImage = CIImage(image: normalizedImage) else {
             // Fallback to original UIKit method if CIImage fails
-            return resizeImageUIKit(image, to: targetSize)
+            return resizeImageUIKit(normalizedImage, to: targetSize)
         }
         
-        // Apply orientation transformation to ensure correct pixel orientation
-        let orientedImage = ciImage.oriented(forExifOrientation: Int32(image.imageOrientation.rawValue))
-        
-        // Calculate scaling to preserve as much content as possible while fitting in target size
-        let sourceSize = orientedImage.extent.size
+        // Calculate scaling to preserve as much content as possible while fitting in target size  
+        let sourceSize = ciImage.extent.size
         
         // Use "fit inside" scaling to preserve maximum content (no cropping)
         let scaleX = targetSize.width / sourceSize.width
@@ -694,7 +694,7 @@ extension ContentView {
         let scale = min(scaleX, scaleY) // Use smaller scale to ensure entire image fits
         
         // Apply scaling transformation
-        let scaledImage = orientedImage.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
+        let scaledImage = ciImage.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
         
         // Calculate position for final composition - bias toward preserving top/bottom content
         let xOffset = (targetSize.width - scaledImage.extent.width) / 2
@@ -774,6 +774,31 @@ extension ContentView {
             // Draw the image with high quality
             image.draw(in: drawRect)
         }
+    }
+    
+    /// Normalizes image orientation by redrawing the image with correct pixel orientation
+    /// This ensures both Core Image and UIKit paths have properly oriented pixels
+    private func normalizeImageOrientation(_ image: UIImage) -> UIImage {
+        // If already .up orientation, return as-is
+        if image.imageOrientation == .up {
+            return image
+        }
+        
+        // Calculate the proper size after orientation transformation
+        let size = image.size
+        
+        // Create a bitmap context and draw the image with proper orientation
+        UIGraphicsBeginImageContextWithOptions(size, false, image.scale)
+        defer { UIGraphicsEndImageContext() }
+        
+        image.draw(in: CGRect(origin: .zero, size: size))
+        
+        // Get the normalized image with .up orientation
+        guard let normalizedImage = UIGraphicsGetImageFromCurrentImageContext() else {
+            return image // Fallback to original if normalization fails
+        }
+        
+        return normalizedImage
     }
     
     private func createFilename() -> String {
