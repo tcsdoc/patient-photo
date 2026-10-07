@@ -11,6 +11,8 @@ import UniformTypeIdentifiers
 import Vision
 
 struct ContentView: View {
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+
     @State private var patientName = ""
     @State private var currentStep: Step = .nameEntry
     @State private var currentPhoto: UIImage?
@@ -38,6 +40,30 @@ struct ContentView: View {
         !patientName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
     
+    private var firstName: String {
+        let trimmed = patientName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return "" }
+        return trimmed.components(separatedBy: .whitespaces).first ?? ""
+    }
+    
+    private var portraitTitle: String {
+        firstName.isEmpty ? "Here's the portrait" : "Here's \(firstName)'s portrait"
+    }
+    
+    private var portraitReadyTitle: String {
+        firstName.isEmpty ? "Portrait is ready" : "\(firstName)'s portrait is ready"
+    }
+    
+    private var savedMessage: String {
+        firstName.isEmpty
+            ? "The portrait is in the folder you picked."
+            : "\(firstName)'s portrait is in the folder you picked."
+    }
+
+    private var useSideBySideActions: Bool {
+        horizontalSizeClass == .regular
+    }
+    
     var body: some View {
         VStack(spacing: 0) {
             // Header
@@ -47,44 +73,52 @@ struct ContentView: View {
                         Text("Staff Portrait")
                             .font(.title2)
                             .bold()
-                        Text("AI-Powered Headshot Capture")
+                            .foregroundColor(.brandHeaderText)
+                        Text("Headshots for ID cards and badges")
                             .font(.subheadline)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(.brandHeaderSubtext)
                         Text("v\(appVersion)")
                             .font(.custom("HelveticaNeue-Medium", size: 13))
-                            .foregroundColor(.secondary)
+                            .foregroundColor(.brandHeaderSubtext.opacity(0.85))
                     }
-                    
-                    Spacer()
+
+                    Spacer(minLength: 0)
                 }
-                .padding(.horizontal, 24)
+                .brandContentColumn()
+                .padding(.horizontal, BrandLayout.horizontalPadding)
                 .padding(.top, 20)
                 
                 Divider()
+                    .background(Color.brandCream.opacity(0.25))
             }
-            .background(Color(.systemGray6))
+            .background(Color.brandHeaderBackground)
             
             // Main Content
-            VStack(spacing: 30) {
-                switch currentStep {
-                case .nameEntry:
-                    nameEntryView
-                case .camera:
-                    EmptyView()
-                case .headshotValidation:
-                    headshotValidationView
-                case .finalPreview:
-                    finalPreviewView
-                case .transfer:
-                    transferView
-                case .complete:
-                    completeView
+            ScrollView {
+                VStack(spacing: 30) {
+                    switch currentStep {
+                    case .nameEntry:
+                        nameEntryView
+                    case .camera:
+                        EmptyView()
+                    case .headshotValidation:
+                        headshotValidationView
+                    case .finalPreview:
+                        finalPreviewView
+                    case .transfer:
+                        transferView
+                    case .complete:
+                        completeView
+                    }
                 }
+                .brandContentColumn(maxWidth: stepContentMaxWidth)
+                .padding(.horizontal, BrandLayout.horizontalPadding)
+                .padding(.vertical, 30)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .padding(.horizontal, 40)
-            .padding(.vertical, 30)
+            .background(Color.brandScreenBackground)
         }
+        .background(Color.brandScreenBackground)
         .sheet(isPresented: $showingImagePicker) {
             ImagePicker(image: $currentPhoto, onImagePicked: handleImagePicked)
         }
@@ -107,132 +141,93 @@ struct ContentView: View {
         }
     }
     
-    private var nameEntryView: some View {
-        ZStack {
-            LinearGradient(gradient: Gradient(colors: [Color(.systemTeal).opacity(0.18), Color(.systemGreen).opacity(0.12)]), startPoint: .top, endPoint: .bottom)
-                .ignoresSafeArea()
-            
-            ScrollView {
-                VStack(spacing: 30) {
-                    // Top spacer to push content higher up
-                    Spacer()
-                        .frame(height: 60)
-                    
-                    VStack(spacing: 20) {
-                        Image(systemName: "person.badge.plus")
-                            .font(.system(size: 50))
-                            .foregroundColor(.blue)
-                        
-                        Text("Enter Person Name")
-                            .font(.title2)
-                            .bold()
-                        
-                        Text("AI will analyze photo quality and ensure proper headshot framing")
-                            .font(.body)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 40)
-                    }
-                    
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 20)
-                            .fill(Color(.systemBlue).opacity(0.08))
-                            .shadow(color: Color(.systemBlue).opacity(0.10), radius: 8, x: 0, y: 4)
-                        VStack(spacing: 20) {
-                            TextField("Person Name", text: $patientName)
-                                .textFieldStyle(RoundedBorderTextFieldStyle())
-                                .font(.title3)
-                                .frame(width: 300)
-                                .multilineTextAlignment(.center)
-                                .autocapitalization(.words)
-                                .disableAutocorrection(true)
-                                .onChange(of: patientName) { newValue in
-                                    patientName = String(newValue.prefix(16))
-                                }
-                            
-                            Button(action: {
-                                if isPatientNameValid {
-                                    currentStep = .camera
-                                }
-                            }) {
-                                HStack(spacing: 12) {
-                                    Image(systemName: "camera")
-                                        .font(.title3)
-                                    Text("Take Photo")
-                                        .font(.title3)
-                                        .fontWeight(.medium)
-                                }
-                                .frame(height: 60)
-                                .frame(width: 300)
-                                .multilineTextAlignment(.center)
-                                .background(isPatientNameValid ? Color.blue : Color.gray)
-                                .foregroundColor(.white)
-                                .cornerRadius(12)
-                            }
-                            .disabled(!isPatientNameValid)
-                        }
-                        .padding(32)
-                    }
-                    .padding(.horizontal, 16)
-                    
-                    // Bottom spacer to ensure scrollability above keyboard
-                    Spacer()
-                        .frame(height: 200)
-                }
-            }
+    private var stepContentMaxWidth: CGFloat {
+        switch currentStep {
+        case .headshotValidation, .finalPreview:
+            return BrandLayout.wideContentMaxWidth
+        default:
+            return BrandLayout.contentMaxWidth
         }
+    }
+
+    private var nameEntryView: some View {
+        VStack(spacing: 30) {
+            VStack(spacing: 20) {
+                Image(systemName: "person.crop.circle")
+                    .font(.system(size: 50))
+                    .foregroundColor(.brandGold)
+
+                Text("Who's getting their picture taken?")
+                    .font(.title2)
+                    .bold()
+                    .foregroundColor(.brandPrimaryText)
+                    .multilineTextAlignment(.center)
+
+                Text("We'll check the lighting and framing for you, so it's right the first time.")
+                    .font(.body)
+                    .foregroundColor(.brandSecondaryText)
+                    .multilineTextAlignment(.center)
+            }
+
+            VStack(spacing: 20) {
+                TextField("First and last name", text: $patientName)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                    .font(.title3)
+                    .frame(maxWidth: .infinity)
+                    .multilineTextAlignment(.center)
+                    .autocapitalization(.words)
+                    .disableAutocorrection(true)
+                    .onChange(of: patientName) { newValue in
+                        patientName = String(newValue.prefix(16))
+                    }
+
+                Button(action: {
+                    if isPatientNameValid {
+                        currentStep = .camera
+                    }
+                }) {
+                    HStack(spacing: 12) {
+                        Image(systemName: "camera")
+                        Text("Take Photo")
+                    }
+                }
+                .buttonStyle(BrandPrimaryButtonStyle(isEnabled: isPatientNameValid, fillWidth: true))
+                .disabled(!isPatientNameValid)
+            }
+            .brandCard()
+        }
+        .padding(.top, 20)
     }
     
     private var transferView: some View {
-        VStack(spacing: 40) {
+        VStack(spacing: 32) {
             VStack(spacing: 20) {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: 80))
-                    .foregroundColor(.green)
-                
-                Text("Headshot Ready to Transfer")
+                    .foregroundColor(.brandGold)
+
+                Text(portraitReadyTitle)
                     .font(.title2)
                     .bold()
-                
-                VStack(spacing: 8) {
-                    Text("Person: \(patientName)")
-                        .font(.title3)
-                        .fontWeight(.medium)
-                    
-                    Text("✅ AI-validated headshot (640x480)")
-                        .font(.body)
-                        .foregroundColor(.green)
-                    
-                    Text("Professional quality confirmed")
-                        .font(.custom("HelveticaNeue-Medium", size: 13))
-                        .foregroundColor(.secondary)
-                }
+                    .foregroundColor(.brandPrimaryText)
+                    .multilineTextAlignment(.center)
+
+                Text("Checked and ready to save.")
+                    .font(.body)
+                    .foregroundColor(.brandSecondaryText)
+                    .multilineTextAlignment(.center)
             }
-            
-            VStack {
+
+            VStack(spacing: 20) {
                 Button(action: { showingDocumentPicker = true }) {
                     HStack(spacing: 12) {
-                        Image(systemName: "icloud.and.arrow.up")
-                            .font(.title3)
-                        Text("Save to Server")
-                            .font(.title3)
-                            .fontWeight(.medium)
+                        Image(systemName: "square.and.arrow.down")
+                        Text("Save Photo")
                     }
-                    .frame(minWidth: 280)
-                    .frame(height: 60)
-                    .padding(.horizontal, 20)
-                    .background(Color.green)
-                    .foregroundColor(.white)
-                    .cornerRadius(12)
                 }
+                .buttonStyle(BrandPrimaryButtonStyle(fillWidth: true))
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 20)
-            .background(
-                RoundedRectangle(cornerRadius: 20)
-                    .fill(Color(.systemBlue).opacity(0.08))
-                    .shadow(color: Color(.systemBlue).opacity(0.10), radius: 8, x: 0, y: 4)
-            )
+            .brandCard()
         }
     }
     
@@ -242,149 +237,60 @@ struct ContentView: View {
                 if isAnalyzingHeadshot {
                     ProgressView()
                         .scaleEffect(1.5)
-                    Text("Analyzing Photo...")
+                        .tint(.brandGold)
+                    Text("Checking your shot…")
                         .font(.title3)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(.brandSecondaryText)
                 } else if let result = headshotResult {
-                    // Show photo analysis results
                     Image(systemName: result.isValidHeadshot ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
                         .font(.system(size: 60))
-                        .foregroundColor(result.isValidHeadshot ? .green : .orange)
+                        .foregroundColor(result.isValidHeadshot ? .brandSuccess : .brandWarning)
                     
-                    Text(result.message)
+                    Text(result.isValidHeadshot ? "Looking great!" : "Almost there. Let's try that one again.")
                         .font(.title3)
                         .bold()
+                        .foregroundColor(.brandPrimaryText)
                         .multilineTextAlignment(.center)
                     
-                    // Show photo preview
                     if let photo = currentPhoto {
-                        VStack(spacing: 15) {
-                            // Image preview
-                            Image(uiImage: photo)
-                                .resizable()
-                                .scaledToFit()
-                                .frame(height: 200)
-                                .cornerRadius(12)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 12)
-                                        .stroke(result.isValidHeadshot ? Color.green : Color.orange, lineWidth: 3)
-                                )
-                        }
+                        Image(uiImage: photo)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(maxWidth: BrandLayout.photoPreviewMaxWidth)
+                            .frame(maxHeight: 220)
+                            .cornerRadius(16)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .stroke(result.isValidHeadshot ? Color.brandGold : Color.brandWarning, lineWidth: 3)
+                            )
                     }
-                    
-                    // Show headshot details
-                    VStack(spacing: 8) {
-                        HStack {
-                            Text("Faces detected:")
-                            Spacer()
-                            Text("\(result.faceCount)")
-                                .fontWeight(.medium)
-                        }
-                        
-                        if result.faceCount > 0 {
-                            HStack {
-                                Text("Face coverage:")
-                                Spacer()
-                                Text("\(Int(result.faceArea * 100))%")
-                                    .fontWeight(.medium)
-                            }
-                        }
-                    }
-                    .padding()
-                    .background(Color(.systemGray6))
-                    .cornerRadius(8)
                 }
             }
             
-            // Action buttons
             VStack(spacing: 15) {
                 if let result = headshotResult {
                     if result.isValidHeadshot {
-                        // Use this photo
                         Button(action: processValidatedPhoto) {
                             HStack(spacing: 12) {
                                 Image(systemName: "checkmark.circle")
-                                    .font(.title3)
                                 Text("Use This Photo")
-                                    .font(.title3)
-                                    .fontWeight(.medium)
                             }
-                            .frame(minWidth: 280)
-                            .frame(height: 60)
-                            .padding(.horizontal, 20)
-                            .background(Color.green)
-                            .foregroundColor(.white)
-                            .cornerRadius(12)
                         }
+                        .buttonStyle(BrandPrimaryButtonStyle(fillWidth: true))
                     } else {
-                        // Show guidance and retake option on same line for better iPad layout
-                        HStack(spacing: 15) {
-                            // Headshot Tips box on the left
-                            VStack(spacing: 10) {
-                                Text("💡 Headshot Tips:")
-                                    .font(.headline)
-                                
-                                VStack(alignment: .leading, spacing: 5) {
-                                    Text("• Position face in center of frame")
-                                    Text("• Ensure good lighting on face")
-                                    Text("• Face can be close or distant (10-80% of image)")
-                                    Text("• Only one person in photo")
-                                }
-                                .font(.body)
-                                .foregroundColor(.secondary)
-                            }
-                            .padding()
-                            .background(Color(.systemBlue).opacity(0.1))
-                            .cornerRadius(12)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            
-                            // Retake photo button on the right
-                            Button(action: {
-                                currentStep = .camera
-                                headshotResult = nil
-                            }) {
-                                HStack(spacing: 12) {
-                                    Image(systemName: "camera.rotate")
-                                        .font(.title3)
-                                    Text("Retake Photo")
-                                        .font(.title3)
-                                        .fontWeight(.medium)
-                                }
-                                .frame(width: 200, height: 60)
-                                .background(Color.blue)
-                                .foregroundColor(.white)
-                                .cornerRadius(12)
-                            }
-                        }
-                    }
-                    
-                    // Use anyway option (for non-ideal photos)
-                    if !result.isValidHeadshot {
+                        validationRetryActions
+
                         Button(action: processValidatedPhoto) {
                             HStack(spacing: 12) {
                                 Image(systemName: "photo")
-                                    .font(.title3)
                                 Text("Use Anyway")
-                                    .font(.title3)
-                                    .fontWeight(.medium)
                             }
-                            .frame(minWidth: 280)
-                            .frame(height: 60)
-                            .padding(.horizontal, 20)
-                            .background(Color.gray)
-                            .foregroundColor(.white)
-                            .cornerRadius(12)
                         }
+                        .buttonStyle(BrandSecondaryButtonStyle(fillWidth: true))
                     }
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 20)
-            .background(
-                RoundedRectangle(cornerRadius: 20)
-                    .fill(Color(.systemBlue).opacity(0.08))
-                    .shadow(color: Color(.systemBlue).opacity(0.10), radius: 8, x: 0, y: 4)
-            )
+            .brandCard()
         }
     }
     
@@ -393,110 +299,128 @@ struct ContentView: View {
             VStack(spacing: 20) {
                 Image(systemName: "doc.viewfinder")
                     .font(.system(size: 60))
-                    .foregroundColor(.blue)
+                    .foregroundColor(.brandGold)
                 
-                Text("Final Preview")
+                Text(portraitTitle)
                     .font(.title2)
                     .bold()
+                    .foregroundColor(.brandPrimaryText)
+                    .multilineTextAlignment(.center)
                 
-                Text("This is exactly what will be saved to the server")
+                Text("This is exactly how it will be saved.")
                     .font(.body)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(.brandSecondaryText)
                     .multilineTextAlignment(.center)
             }
             
-            // Show final processed image
             if let finalImage = finalProcessedImage {
                 VStack(spacing: 15) {
-                    Text("Person: \(patientName)")
-                        .font(.title3)
-                        .fontWeight(.medium)
-                    
-                    // Final image preview with dimensions
-                    VStack(spacing: 10) {
-                        Image(uiImage: finalImage)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(height: 240)
-                            .cornerRadius(12)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .stroke(Color.blue, lineWidth: 3)
-                            )
-                        
-                        // Show final specifications
-                        VStack(spacing: 5) {
-                            HStack {
-                                Text("Dimensions:")
-                                Spacer()
-                                Text("640 × 480 pixels")
-                                    .fontWeight(.medium)
-                            }
-                            
-                            HStack {
-                                Text("Background:")
-                                Spacer()
-                                Text("Original")
-                                    .fontWeight(.medium)
-                            }
-                            
-                            HStack {
-                                Text("File format:")
-                                Spacer()
-                                Text("JPEG")
-                                    .fontWeight(.medium)
-                            }
-                        }
-                        .padding()
-                        .background(Color(.systemGray6))
-                        .cornerRadius(8)
-                    }
+                    Image(uiImage: finalImage)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(maxWidth: BrandLayout.photoPreviewMaxWidth)
+                        .frame(maxHeight: 260)
+                        .cornerRadius(16)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16)
+                                .stroke(Color.brandGold, lineWidth: 3)
+                        )
+
+                    Text("640 × 480 pixels · Original background · JPEG")
+                        .font(.caption)
+                        .foregroundColor(.brandSecondaryText)
+                        .multilineTextAlignment(.center)
                 }
             }
-            
-            // Action buttons - side by side for better iPad layout
-            HStack(spacing: 15) {
-                // Retake photo (left side)
-                Button(action: {
-                    currentStep = .camera
-                    finalProcessedImage = nil
-                    headshotResult = nil
-                }) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "camera.rotate")
-                            .font(.title3)
-                        Text("Retake Photo")
-                            .font(.title3)
-                            .fontWeight(.medium)
-                    }
-                    .frame(width: 200, height: 60)
-                    .background(Color.blue)
-                    .foregroundColor(.white)
-                    .cornerRadius(12)
-                }
-                
-                // Save to server button (right side)
-                Button(action: saveToServer) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "icloud.and.arrow.up")
-                            .font(.title3)
-                        Text("Save to Server")
-                            .font(.title3)
-                            .fontWeight(.medium)
-                    }
-                    .frame(width: 200, height: 60)
-                    .background(Color.green)
-                    .foregroundColor(.white)
-                    .cornerRadius(12)
-                }
+
+            finalPreviewActions
+                .brandCard()
+        }
+    }
+
+    @ViewBuilder
+    private var validationRetryActions: some View {
+        let tips = validationTipsBox
+        let retakeButton = Button(action: {
+            currentStep = .camera
+            headshotResult = nil
+        }) {
+            HStack(spacing: 12) {
+                Image(systemName: "camera.rotate")
+                Text("Retake Photo")
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 20)
-            .background(
-                RoundedRectangle(cornerRadius: 20)
-                    .fill(Color(.systemBlue).opacity(0.08))
-                    .shadow(color: Color(.systemBlue).opacity(0.10), radius: 8, x: 0, y: 4)
-            )
+        }
+        .buttonStyle(BrandPrimaryButtonStyle(fillWidth: !useSideBySideActions))
+
+        if useSideBySideActions {
+            HStack(alignment: .top, spacing: 16) {
+                tips
+                retakeButton
+                    .frame(maxWidth: BrandLayout.buttonMaxWidth)
+            }
+        } else {
+            VStack(spacing: 16) {
+                tips
+                retakeButton
+            }
+        }
+    }
+
+    private var validationTipsBox: some View {
+        VStack(spacing: 10) {
+            Text("Tips")
+                .font(.headline)
+                .foregroundColor(.brandPrimaryText)
+
+            VStack(alignment: .leading, spacing: 5) {
+                Text("• Center the face in the frame")
+                Text("• Find soft, even light on the face")
+                Text("• Just one person in the shot")
+            }
+            .font(.body)
+            .foregroundColor(.brandSecondaryText)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding()
+        .background(Color.brandSecondaryButtonBackground)
+        .cornerRadius(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder
+    private var finalPreviewActions: some View {
+        let retakeButton = Button(action: {
+            currentStep = .camera
+            finalProcessedImage = nil
+            headshotResult = nil
+        }) {
+            HStack(spacing: 8) {
+                Image(systemName: "camera.rotate")
+                Text("Retake Photo")
+            }
+        }
+        .buttonStyle(BrandSecondaryButtonStyle(fillWidth: !useSideBySideActions))
+
+        let saveButton = Button(action: saveToServer) {
+            HStack(spacing: 8) {
+                Image(systemName: "square.and.arrow.down")
+                Text("Save Photo")
+            }
+        }
+        .buttonStyle(BrandPrimaryButtonStyle(fillWidth: !useSideBySideActions))
+
+        if useSideBySideActions {
+            HStack(spacing: 16) {
+                retakeButton
+                    .frame(maxWidth: .infinity)
+                saveButton
+                    .frame(maxWidth: .infinity)
+            }
+        } else {
+            VStack(spacing: 16) {
+                retakeButton
+                saveButton
+            }
         }
     }
     
@@ -505,74 +429,38 @@ struct ContentView: View {
             VStack(spacing: 20) {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: 80))
-                    .foregroundColor(.green)
+                    .foregroundColor(.brandGold)
                 
-                Text("Transfer Complete")
+                Text("Saved!")
                     .font(.title2)
                     .bold()
+                    .foregroundColor(.brandPrimaryText)
                 
-                VStack(spacing: 8) {
-                    Text("Photo successfully transferred to server.")
-                        .font(.body)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                    
-                    Text("Person: \(patientName)")
-                        .font(.title3)
-                        .fontWeight(.medium)
-                }
+                Text(savedMessage)
+                    .font(.body)
+                    .foregroundColor(.brandSecondaryText)
+                    .multilineTextAlignment(.center)
             }
             
-            VStack(spacing: 15) {
-                Button(action: {
-                    // Reset for new photo instead of exiting
-                    currentStep = .nameEntry
-                    patientName = ""
-                    currentPhoto = nil
-                }) {
+            VStack(spacing: 20) {
+                Button(action: resetForAnotherPhoto) {
                     HStack(spacing: 8) {
-                        Image(systemName: "plus.circle")
-                            .font(.title3)
-                        Text("New Photo")
-                            .font(.title3)
-                            .fontWeight(.medium)
+                        Image(systemName: "camera")
+                        Text("Take Another")
                     }
-                    .frame(width: 220)
-                    .frame(height: 60)
-                    .background(Color.blue)
-                    .foregroundColor(.white)
-                    .cornerRadius(12)
                 }
-                
-                Button(action: {
-                    // App Store compliant: Reset to beginning instead of exit
-                    // Apple guidelines discourage programmatic app termination
-                    currentStep = .nameEntry
-                    patientName = ""
-                    currentPhoto = nil
-                }) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "arrow.clockwise")
-                            .font(.title3)
-                        Text("Start Over")
-                            .font(.title3)
-                            .fontWeight(.medium)
-                    }
-                    .frame(width: 220)
-                    .frame(height: 60)
-                    .background(Color.gray)
-                    .foregroundColor(.white)
-                    .cornerRadius(12)
-                }
+                .buttonStyle(BrandPrimaryButtonStyle(fillWidth: true))
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 20)
-            .background(
-                RoundedRectangle(cornerRadius: 20)
-                    .fill(Color(.systemBlue).opacity(0.08))
-                    .shadow(color: Color(.systemBlue).opacity(0.10), radius: 8, x: 0, y: 4)
-            )
+            .brandCard()
         }
+    }
+    
+    private func resetForAnotherPhoto() {
+        currentStep = .nameEntry
+        patientName = ""
+        currentPhoto = nil
+        headshotResult = nil
+        finalProcessedImage = nil
     }
     
     private func handleImagePicked() {
