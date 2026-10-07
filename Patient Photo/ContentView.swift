@@ -400,10 +400,7 @@ struct ContentView: View {
 
     private func handleCameraCancelled() {
         showingImagePicker = false
-        currentStep = .nameEntry
-        currentPhoto = nil
-        headshotResult = nil
-        finalProcessedImage = nil
+        resetForAnotherPhoto()
     }
     
     private func retakePhoto() {
