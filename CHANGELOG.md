@@ -1,9 +1,17 @@
 # Changelog
 
-All notable changes to the Patient Photo app will be documented in this file.
+All notable changes to the Staff Portrait app will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [2.0.4] - 2026-10-07
+
+### Changed
+- Rebranded user-facing name from Patient Photo to Staff Portrait
+- Replaced app icon
+- Generalized camera permission and UI copy for non-medical use
+- Bumped marketing version to 2.0.4 and build to 3
 
 ## [1.3.1] - 2025-07-16
 

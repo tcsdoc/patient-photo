@@ -1,21 +1,21 @@
-# Patient Photo App
+# Staff Portrait
 
-**Version 1.3.1** | **App Store Ready** | **Medical Photography Solution**
+**Version 2.0.4** | **App Store Ready** | **Headshot Capture for ID Cards & Badges**
 
-A streamlined iOS app designed for medical professionals to capture patient photos and transfer them to a server for healthcare documentation purposes.
+A streamlined iOS app for capturing headshot photos and transferring them to a server for ID cards, badges, and staff directories.
 
 ## 📱 Overview
 
-Patient Photo is a specialized medical app that simplifies the process of capturing, processing, and transferring patient photographs. Built with privacy and compliance in mind, it's optimized for healthcare environments and ready for App Store distribution.
+Staff Portrait simplifies the process of capturing, processing, and transferring headshot photographs. Built with privacy in mind, it is optimized for workplace and organizational use and ready for App Store distribution.
 
 ## ✨ Key Features
 
-- **📸 Professional Photo Capture**: Rear camera only for consistent medical documentation
+- **📸 Professional Photo Capture**: Rear camera only for consistent headshot documentation
 - **🎯 Standardized Output**: 640x480 JPEG format with optimized compression
-- **🏥 Medical-Focused UI**: Clean, professional interface designed for healthcare settings
+- **🏢 Workplace-Focused UI**: Clean, professional interface designed for staff ID workflows
 - **📁 Server Integration**: Seamless transfer via iOS Files app to network storage
-- **🔒 Privacy Compliant**: Proper camera permissions with medical-focused descriptions
-- **📲 iPad Optimized**: Designed specifically for tablet use in clinical environments
+- **🔒 Privacy Compliant**: Proper camera permissions with clear usage descriptions
+- **📲 iPad Optimized**: Designed specifically for tablet use in office and field settings
 
 ## 🚀 Quick Start
 
@@ -36,7 +36,7 @@ Patient Photo is a specialized medical app that simplifies the process of captur
 The app follows a simple 4-step process:
 
 ```
-1. ENTER PATIENT NAME
+1. ENTER PERSON NAME
    ↓
 2. CAPTURE PHOTO (Auto-opens camera)
    ↓
@@ -47,8 +47,8 @@ The app follows a simple 4-step process:
 
 ### Step-by-Step Usage
 
-1. **Patient Name Entry**
-   - Enter patient name (up to 16 characters)
+1. **Person Name Entry**
+   - Enter person name (up to 16 characters)
    - Tap "Take Photo" to proceed
 
 2. **Photo Capture**
@@ -59,7 +59,7 @@ The app follows a simple 4-step process:
 3. **Photo Processing**
    - Automatically resizes to 640x480
    - Converts to JPEG format
-   - Creates filename: `PatientName.jpg`
+   - Creates filename: `PersonName.jpg`
 
 4. **Server Transfer**
    - Tap "Save to Server"
@@ -78,34 +78,35 @@ The app follows a simple 4-step process:
 - **Framework**: SwiftUI
 - **Target**: iOS 15.6+
 - **Bundle ID**: `com.marlixholdings.Patient-Photo`
-- **Category**: Medical
+- **Category**: Photography
 
 ### Image Processing
 - **Resolution**: 640x480 pixels
 - **Format**: JPEG
 - **Compression**: 0.8 quality ratio
-- **Aspect Ratio**: Maintained with white background fill
+- **Aspect Ratio**: Maintained with light gray background fill
 - **File Size**: ~50-150KB per image
 
 ### Privacy & Permissions
 - **Camera Access**: Required for photo capture
-- **Purpose**: "This medical app requires camera access to capture patient photos for healthcare documentation purposes"
+- **Purpose**: "Staff Portrait needs camera access to take headshot photos for ID cards and badges."
 - **No Photo Library Access**: App doesn't access existing photos
+- **Local Processing**: All image processing happens on-device; no cloud storage
 
-## 🏥 Medical Use Case
+## 🏢 Use Cases
 
 ### Designed For
-- **Dermatology**: Skin condition documentation
-- **Wound Care**: Progress tracking
-- **General Practice**: Patient identification
-- **Dental**: Oral health documentation
-- **Research**: Clinical study photography
+- **Staff ID Cards**: Employee badge photos
+- **Visitor Badges**: Front-desk headshot capture
+- **Staff Directories**: Consistent portrait photos for internal listings
+- **Event Credentials**: Name badge photo workflows
+- **General Headshots**: Any workflow requiring standardized 640x480 portraits
 
-### Compliance Features
-- **HIPAA Considerations**: Local processing, no cloud storage
+### Privacy Features
+- **Local Processing**: All image handling on-device
 - **File Management**: Automatic cleanup after transfer
 - **Professional Output**: Consistent image quality
-- **Audit Trail**: Filename includes patient identifier
+- **Audit Trail**: Filename includes person identifier
 
 ## 🔒 App Store Compliance
 
@@ -113,14 +114,13 @@ The app follows a simple 4-step process:
 - [x] No private APIs used
 - [x] Proper camera permission handling
 - [x] Professional privacy descriptions
-- [x] Medical app category set
 - [x] Clean app lifecycle management
 - [x] No forced app termination
 - [x] Production-ready code quality
 
 ### Privacy Policy Requirements
 When submitting to App Store, include:
-- Camera usage for medical photography
+- Camera usage for headshot photography
 - Local storage and automatic cleanup
 - No personal data collection
 - Server transfer via user action only
@@ -168,7 +168,13 @@ Patient Photo/
 
 ## 🔄 Version History
 
-### Version 1.3.1 (Current)
+### Version 2.0.4 (Current)
+- **Rebrand**: User-facing name changed to Staff Portrait
+- **New App Icon**: Updated icon for ID card and badge use
+- **Generalized Copy**: Camera permission and UI text for non-medical workflows
+- **Version Bump**: Marketing version 2.0.4, build 3
+
+### Version 1.3.1
 - **App Store Compliance**: Removed private API usage
 - **Enhanced Privacy**: Improved permission descriptions
 - **UX Improvements**: Professional app lifecycle management
@@ -176,11 +182,11 @@ Patient Photo/
 
 ### Version 1.3.0
 - **Simplified Workflow**: Removed unnecessary buttons and features
-- **UI Cleanup**: Streamlined interface for medical use
+- **UI Cleanup**: Streamlined interface
 - **Performance**: Optimized for 640x480 image processing
 
 ### Version 1.2.5
-- Initial medical app version
+- Initial release version
 - Basic photo capture and transfer functionality
 
 ## 🤝 Contributing
@@ -215,12 +221,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [ ] Dark mode optimization
 - [ ] Accessibility improvements
 
-### Medical Enhancements
-- [ ] DICOM format support
-- [ ] Integration with EMR systems
-- [ ] Advanced image annotations
-- [ ] Quality assurance checks
-
 ---
 
-**Built for Healthcare Professionals** | **Ready for App Store** | **Version 1.3.1** 
+**Built for Organizations** | **Ready for App Store** | **Version 2.0.4**
