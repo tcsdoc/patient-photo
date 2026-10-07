@@ -27,7 +27,7 @@ struct ContentView: View {
     @State private var finalProcessedImage: UIImage?
     
     enum Step {
-        case nameEntry, camera, headshotValidation, finalPreview, transfer, complete
+        case nameEntry, camera, review, complete
     }
     
     // Get app version from bundle
@@ -48,10 +48,6 @@ struct ContentView: View {
     
     private var portraitTitle: String {
         firstName.isEmpty ? "Here's the portrait" : "Here's \(firstName)'s portrait"
-    }
-    
-    private var portraitReadyTitle: String {
-        firstName.isEmpty ? "Portrait is ready" : "\(firstName)'s portrait is ready"
     }
     
     private var savedMessage: String {
@@ -101,12 +97,8 @@ struct ContentView: View {
                         nameEntryView
                     case .camera:
                         EmptyView()
-                    case .headshotValidation:
-                        headshotValidationView
-                    case .finalPreview:
-                        finalPreviewView
-                    case .transfer:
-                        transferView
+                    case .review:
+                        reviewView
                     case .complete:
                         completeView
                     }
@@ -143,7 +135,7 @@ struct ContentView: View {
     
     private var stepContentMaxWidth: CGFloat {
         switch currentStep {
-        case .headshotValidation, .finalPreview:
+        case .review:
             return BrandLayout.wideContentMaxWidth
         default:
             return BrandLayout.contentMaxWidth
@@ -199,39 +191,7 @@ struct ContentView: View {
         .padding(.top, 20)
     }
     
-    private var transferView: some View {
-        VStack(spacing: 32) {
-            VStack(spacing: 20) {
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 80))
-                    .foregroundColor(.brandGold)
-
-                Text(portraitReadyTitle)
-                    .font(.title2)
-                    .bold()
-                    .foregroundColor(.brandPrimaryText)
-                    .multilineTextAlignment(.center)
-
-                Text("Checked and ready to save.")
-                    .font(.body)
-                    .foregroundColor(.brandSecondaryText)
-                    .multilineTextAlignment(.center)
-            }
-
-            VStack(spacing: 20) {
-                Button(action: { showingDocumentPicker = true }) {
-                    HStack(spacing: 12) {
-                        Image(systemName: "square.and.arrow.down")
-                        Text("Save Photo")
-                    }
-                }
-                .buttonStyle(BrandPrimaryButtonStyle(fillWidth: true))
-            }
-            .brandCard()
-        }
-    }
-    
-    private var headshotValidationView: some View {
+    private var reviewView: some View {
         VStack(spacing: 30) {
             VStack(spacing: 20) {
                 if isAnalyzingHeadshot {
@@ -242,126 +202,118 @@ struct ContentView: View {
                         .font(.title3)
                         .foregroundColor(.brandSecondaryText)
                 } else if let result = headshotResult {
-                    Image(systemName: result.isValidHeadshot ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
-                        .font(.system(size: 60))
-                        .foregroundColor(result.isValidHeadshot ? .brandSuccess : .brandWarning)
-                    
-                    Text(result.isValidHeadshot ? "Looking great!" : "Almost there. Let's try that one again.")
-                        .font(.title3)
+                    Text(portraitTitle)
+                        .font(.title2)
                         .bold()
                         .foregroundColor(.brandPrimaryText)
                         .multilineTextAlignment(.center)
-                    
-                    if let photo = currentPhoto {
-                        Image(uiImage: photo)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(maxWidth: BrandLayout.photoPreviewMaxWidth)
-                            .frame(maxHeight: 220)
-                            .cornerRadius(16)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 16)
-                                    .stroke(result.isValidHeadshot ? Color.brandGold : Color.brandWarning, lineWidth: 3)
-                            )
+
+                    HStack(spacing: 10) {
+                        Image(systemName: result.isValidHeadshot ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                            .font(.title2)
+                            .foregroundColor(result.isValidHeadshot ? .brandSuccess : .brandWarning)
+
+                        Text(result.isValidHeadshot ? "Looking great!" : "Almost there. Let's try that one again.")
+                            .font(.title3)
+                            .bold()
+                            .foregroundColor(.brandPrimaryText)
+                            .multilineTextAlignment(.center)
+                    }
+
+                    if let finalImage = finalProcessedImage {
+                        VStack(spacing: 15) {
+                            Image(uiImage: finalImage)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(maxWidth: BrandLayout.photoPreviewMaxWidth)
+                                .frame(maxHeight: 260)
+                                .cornerRadius(16)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 16)
+                                        .stroke(result.isValidHeadshot ? Color.brandGold : Color.brandWarning, lineWidth: 3)
+                                )
+
+                            Text("640 × 480 pixels · Original background · JPEG")
+                                .font(.caption)
+                                .foregroundColor(.brandSecondaryText)
+                                .multilineTextAlignment(.center)
+                        }
                     }
                 }
             }
-            
-            VStack(spacing: 15) {
-                if let result = headshotResult {
-                    if result.isValidHeadshot {
-                        Button(action: processValidatedPhoto) {
-                            HStack(spacing: 12) {
-                                Image(systemName: "checkmark.circle")
-                                Text("Use This Photo")
-                            }
-                        }
-                        .buttonStyle(BrandPrimaryButtonStyle(fillWidth: true))
-                    } else {
-                        validationRetryActions
 
-                        Button(action: processValidatedPhoto) {
-                            HStack(spacing: 12) {
-                                Image(systemName: "photo")
-                                Text("Use Anyway")
-                            }
-                        }
-                        .buttonStyle(BrandSecondaryButtonStyle(fillWidth: true))
-                    }
-                }
+            if let result = headshotResult, !isAnalyzingHeadshot {
+                reviewActions(for: result)
+                    .brandCard()
             }
-            .brandCard()
-        }
-    }
-    
-    private var finalPreviewView: some View {
-        VStack(spacing: 30) {
-            VStack(spacing: 20) {
-                Image(systemName: "doc.viewfinder")
-                    .font(.system(size: 60))
-                    .foregroundColor(.brandGold)
-                
-                Text(portraitTitle)
-                    .font(.title2)
-                    .bold()
-                    .foregroundColor(.brandPrimaryText)
-                    .multilineTextAlignment(.center)
-                
-                Text("This is exactly how it will be saved.")
-                    .font(.body)
-                    .foregroundColor(.brandSecondaryText)
-                    .multilineTextAlignment(.center)
-            }
-            
-            if let finalImage = finalProcessedImage {
-                VStack(spacing: 15) {
-                    Image(uiImage: finalImage)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(maxWidth: BrandLayout.photoPreviewMaxWidth)
-                        .frame(maxHeight: 260)
-                        .cornerRadius(16)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 16)
-                                .stroke(Color.brandGold, lineWidth: 3)
-                        )
-
-                    Text("640 × 480 pixels · Original background · JPEG")
-                        .font(.caption)
-                        .foregroundColor(.brandSecondaryText)
-                        .multilineTextAlignment(.center)
-                }
-            }
-
-            finalPreviewActions
-                .brandCard()
         }
     }
 
     @ViewBuilder
-    private var validationRetryActions: some View {
-        let tips = validationTipsBox
-        let retakeButton = Button(action: {
-            currentStep = .camera
-            headshotResult = nil
-        }) {
-            HStack(spacing: 12) {
-                Image(systemName: "camera.rotate")
-                Text("Retake Photo")
+    private func reviewActions(for result: HeadshotDetector.HeadshotResult) -> some View {
+        if result.isValidHeadshot {
+            let retakeButton = Button(action: retakePhoto) {
+                HStack(spacing: 8) {
+                    Image(systemName: "camera.rotate")
+                    Text("Retake")
+                }
             }
-        }
-        .buttonStyle(BrandPrimaryButtonStyle(fillWidth: !useSideBySideActions))
+            .buttonStyle(BrandSecondaryButtonStyle(fillWidth: !useSideBySideActions))
 
-        if useSideBySideActions {
-            HStack(alignment: .top, spacing: 16) {
-                tips
-                retakeButton
-                    .frame(maxWidth: BrandLayout.buttonMaxWidth)
+            let saveButton = Button(action: savePhoto) {
+                HStack(spacing: 12) {
+                    Image(systemName: "square.and.arrow.down")
+                    Text("Save Photo")
+                }
+            }
+            .buttonStyle(BrandPrimaryButtonStyle(fillWidth: !useSideBySideActions))
+
+            if useSideBySideActions {
+                HStack(spacing: 16) {
+                    retakeButton
+                        .frame(maxWidth: .infinity)
+                    saveButton
+                        .frame(maxWidth: .infinity)
+                }
+            } else {
+                VStack(spacing: 16) {
+                    saveButton
+                    retakeButton
+                }
             }
         } else {
-            VStack(spacing: 16) {
-                tips
-                retakeButton
+            let tips = validationTipsBox
+            let retakeButton = Button(action: retakePhoto) {
+                HStack(spacing: 12) {
+                    Image(systemName: "camera.rotate")
+                    Text("Retake Photo")
+                }
+            }
+            .buttonStyle(BrandPrimaryButtonStyle(fillWidth: !useSideBySideActions))
+
+            let useAnywayButton = Button(action: savePhoto) {
+                HStack(spacing: 12) {
+                    Image(systemName: "photo")
+                    Text("Use Anyway")
+                }
+            }
+            .buttonStyle(BrandSecondaryButtonStyle(fillWidth: !useSideBySideActions))
+
+            if useSideBySideActions {
+                VStack(spacing: 16) {
+                    HStack(alignment: .top, spacing: 16) {
+                        tips
+                        retakeButton
+                            .frame(maxWidth: BrandLayout.buttonMaxWidth)
+                    }
+                    useAnywayButton
+                }
+            } else {
+                VStack(spacing: 16) {
+                    tips
+                    retakeButton
+                    useAnywayButton
+                }
             }
         }
     }
@@ -387,43 +339,6 @@ struct ContentView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    @ViewBuilder
-    private var finalPreviewActions: some View {
-        let retakeButton = Button(action: {
-            currentStep = .camera
-            finalProcessedImage = nil
-            headshotResult = nil
-        }) {
-            HStack(spacing: 8) {
-                Image(systemName: "camera.rotate")
-                Text("Retake Photo")
-            }
-        }
-        .buttonStyle(BrandSecondaryButtonStyle(fillWidth: !useSideBySideActions))
-
-        let saveButton = Button(action: saveToServer) {
-            HStack(spacing: 8) {
-                Image(systemName: "square.and.arrow.down")
-                Text("Save Photo")
-            }
-        }
-        .buttonStyle(BrandPrimaryButtonStyle(fillWidth: !useSideBySideActions))
-
-        if useSideBySideActions {
-            HStack(spacing: 16) {
-                retakeButton
-                    .frame(maxWidth: .infinity)
-                saveButton
-                    .frame(maxWidth: .infinity)
-            }
-        } else {
-            VStack(spacing: 16) {
-                retakeButton
-                saveButton
-            }
-        }
-    }
-    
     private var completeView: some View {
         VStack(spacing: 40) {
             VStack(spacing: 20) {
@@ -463,57 +378,56 @@ struct ContentView: View {
         finalProcessedImage = nil
     }
     
+    private func retakePhoto() {
+        currentStep = .camera
+        headshotResult = nil
+        finalProcessedImage = nil
+        currentPhoto = nil
+    }
+
     private func handleImagePicked() {
         guard let image = currentPhoto else { return }
-        
-        // Move to headshot validation step first
-        currentStep = .headshotValidation
-        
-        // Analyze headshot quality
+
+        currentStep = .review
+        headshotResult = nil
+        finalProcessedImage = nil
+
         Task {
             await MainActor.run {
                 isAnalyzingHeadshot = true
             }
-            
+
             let result = await HeadshotDetector.analyzeHeadshot(image)
-            
+
             await MainActor.run {
                 headshotResult = result
                 isAnalyzingHeadshot = false
+                buildFinalProcessedImage(from: image, result: result)
             }
         }
     }
-    
-    private func processValidatedPhoto() {
-        guard let image = currentPhoto else { return }
-        
-        // Choose image based on availability - use cropped if available, otherwise original
+
+    private func buildFinalProcessedImage(from image: UIImage, result: HeadshotDetector.HeadshotResult) {
         let chosenImage: UIImage
-        if let croppedImage = headshotResult?.croppedImage {
+        if let croppedImage = result.croppedImage {
             chosenImage = croppedImage
         } else {
             chosenImage = image
         }
-        
-        // Create the final processed image (640x480) for preview
-        let resizedImage = resizeImage(chosenImage, to: CGSize(width: 640, height: 480))
-        finalProcessedImage = resizedImage
-        
-        // Move to final preview step
-        currentStep = .finalPreview
+
+        finalProcessedImage = resizeImage(chosenImage, to: CGSize(width: 640, height: 480))
     }
-    
-    private func saveToServer() {
+
+    private func savePhoto() {
         guard let finalImage = finalProcessedImage else { return }
-        
-        // Save photo for transfer
+
         Task {
             let filename = createFilename()
             let success = await photoManager.saveImageForTransfer(finalImage, filename: filename)
-            
+
             await MainActor.run {
                 if success {
-                    currentStep = .transfer
+                    showingDocumentPicker = true
                 }
             }
         }

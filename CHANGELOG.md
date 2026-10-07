@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.0.4] - 2026-10-07
 
 ### Changed
+- Streamlined capture: review and save on one screen
 - Rebranded user-facing name from Patient Photo to Staff Portrait
 - Replaced app icon
 - Generalized camera permission and UI copy for non-medical use
