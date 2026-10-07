@@ -66,7 +66,7 @@ struct ContentView: View {
             VStack(spacing: 15) {
                 HStack {
                     VStack(alignment: .leading, spacing: 5) {
-                        Text("Staff Portrait")
+                        Text("Staff ID Portrait")
                             .font(.title2)
                             .bold()
                             .foregroundColor(.brandHeaderText)
