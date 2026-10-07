@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Replaced app icon
 - Generalized camera permission and UI copy for non-medical use
 - Bumped marketing version to 2.0.4 and build to 3
+- Friendlier, warmer wording throughout the capture flow
+- Warm navy, gold, and cream visual palette with soft rounded cards
 
 ## [1.3.1] - 2025-07-16
 

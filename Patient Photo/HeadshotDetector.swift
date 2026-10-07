@@ -30,7 +30,7 @@ class HeadshotDetector {
                 faceArea: 0,
                 faceBoundingBox: nil,
                 croppedImage: nil,
-                message: "Unable to process image"
+                message: "We couldn't read that photo — please try again."
             )
         }
         
@@ -46,7 +46,7 @@ class HeadshotDetector {
                         faceArea: 0,
                         faceBoundingBox: nil,
                         croppedImage: nil,
-                        message: "Face detection failed"
+                        message: "We had trouble finding a face — try again with good lighting."
                     ))
                     return
                 }
@@ -58,7 +58,7 @@ class HeadshotDetector {
                         faceArea: 0,
                         faceBoundingBox: nil,
                         croppedImage: nil,
-                        message: "No face detection results"
+                        message: "We couldn't find a face in this shot."
                     ))
                     return
                 }
@@ -67,7 +67,7 @@ class HeadshotDetector {
                 
                 // Check for exactly one face
                 guard faceCount == 1 else {
-                    let message = faceCount == 0 ? "No face detected" : "Multiple faces detected (\(faceCount))"
+                    let message = faceCount == 0 ? "No face found — make sure someone is in the frame." : "Just one person, please — we spotted more than one face."
                     continuation.resume(returning: HeadshotResult(
                         isValidHeadshot: false,
                         faceCount: faceCount,
@@ -120,15 +120,15 @@ class HeadshotDetector {
                 // Generate appropriate message
                 let message: String
                 if isValidHeadshot {
-                    message = "Perfect headshot! ✅"
+                    message = "Looking great!"
                 } else if !isValidSize {
                     if faceAreaPercentage < minFaceArea {
-                        message = "Face too small - move a bit closer"
+                        message = "Move a little closer so the face fills more of the frame."
                     } else {
-                        message = "Face too large - move back"
+                        message = "Step back a bit — the face is a little too close."
                     }
                 } else {
-                    message = "Center face in frame"
+                    message = "Center the face in the frame."
                 }
                 
                 continuation.resume(returning: HeadshotResult(
@@ -155,7 +155,7 @@ class HeadshotDetector {
                     faceArea: 0,
                     faceBoundingBox: nil,
                     croppedImage: nil,
-                    message: "Detection error: \(error.localizedDescription)"
+                    message: "Something went wrong while checking the photo. Please try again."
                 ))
             }
         }
