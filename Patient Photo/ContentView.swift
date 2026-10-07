@@ -11,6 +11,8 @@ import UniformTypeIdentifiers
 import Vision
 
 struct ContentView: View {
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+
     @State private var patientName = ""
     @State private var currentStep: Step = .nameEntry
     @State private var currentPhoto: UIImage?
@@ -57,6 +59,10 @@ struct ContentView: View {
             ? "The portrait is in the folder you picked."
             : "\(firstName)'s portrait is in the folder you picked."
     }
+
+    private var useSideBySideActions: Bool {
+        horizontalSizeClass == .regular
+    }
     
     var body: some View {
         VStack(spacing: 0) {
@@ -75,10 +81,11 @@ struct ContentView: View {
                             .font(.custom("HelveticaNeue-Medium", size: 13))
                             .foregroundColor(.brandHeaderSubtext.opacity(0.85))
                     }
-                    
-                    Spacer()
+
+                    Spacer(minLength: 0)
                 }
-                .padding(.horizontal, 24)
+                .brandContentColumn()
+                .padding(.horizontal, BrandLayout.horizontalPadding)
                 .padding(.top, 20)
                 
                 Divider()
@@ -87,25 +94,28 @@ struct ContentView: View {
             .background(Color.brandHeaderBackground)
             
             // Main Content
-            VStack(spacing: 30) {
-                switch currentStep {
-                case .nameEntry:
-                    nameEntryView
-                case .camera:
-                    EmptyView()
-                case .headshotValidation:
-                    headshotValidationView
-                case .finalPreview:
-                    finalPreviewView
-                case .transfer:
-                    transferView
-                case .complete:
-                    completeView
+            ScrollView {
+                VStack(spacing: 30) {
+                    switch currentStep {
+                    case .nameEntry:
+                        nameEntryView
+                    case .camera:
+                        EmptyView()
+                    case .headshotValidation:
+                        headshotValidationView
+                    case .finalPreview:
+                        finalPreviewView
+                    case .transfer:
+                        transferView
+                    case .complete:
+                        completeView
+                    }
                 }
+                .brandContentColumn(maxWidth: stepContentMaxWidth)
+                .padding(.horizontal, BrandLayout.horizontalPadding)
+                .padding(.vertical, 30)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .padding(.horizontal, 40)
-            .padding(.vertical, 30)
             .background(Color.brandScreenBackground)
         }
         .background(Color.brandScreenBackground)
@@ -131,92 +141,92 @@ struct ContentView: View {
         }
     }
     
-    private var nameEntryView: some View {
-        ScrollView {
-            VStack(spacing: 30) {
-                Spacer()
-                    .frame(height: 60)
-                
-                VStack(spacing: 20) {
-                    Image(systemName: "person.crop.circle")
-                        .font(.system(size: 50))
-                        .foregroundColor(.brandGold)
-                    
-                    Text("Who's getting their picture taken?")
-                        .font(.title2)
-                        .bold()
-                        .foregroundColor(.brandPrimaryText)
-                        .multilineTextAlignment(.center)
-                    
-                    Text("We'll check the lighting and framing for you, so it's right the first time.")
-                        .font(.body)
-                        .foregroundColor(.brandSecondaryText)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 40)
-                }
-                
-                VStack(spacing: 20) {
-                    TextField("First and last name", text: $patientName)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                        .font(.title3)
-                        .frame(width: 300)
-                        .multilineTextAlignment(.center)
-                        .autocapitalization(.words)
-                        .disableAutocorrection(true)
-                        .onChange(of: patientName) { newValue in
-                            patientName = String(newValue.prefix(16))
-                        }
-                    
-                    Button(action: {
-                        if isPatientNameValid {
-                            currentStep = .camera
-                        }
-                    }) {
-                        HStack(spacing: 12) {
-                            Image(systemName: "camera")
-                            Text("Take Photo")
-                        }
-                    }
-                    .buttonStyle(BrandPrimaryButtonStyle(isEnabled: isPatientNameValid))
-                    .frame(width: 300)
-                    .disabled(!isPatientNameValid)
-                }
-                .brandCard()
-                .padding(.horizontal, 16)
-                
-                Spacer()
-                    .frame(height: 200)
-            }
+    private var stepContentMaxWidth: CGFloat {
+        switch currentStep {
+        case .headshotValidation, .finalPreview:
+            return BrandLayout.wideContentMaxWidth
+        default:
+            return BrandLayout.contentMaxWidth
         }
+    }
+
+    private var nameEntryView: some View {
+        VStack(spacing: 30) {
+            VStack(spacing: 20) {
+                Image(systemName: "person.crop.circle")
+                    .font(.system(size: 50))
+                    .foregroundColor(.brandGold)
+
+                Text("Who's getting their picture taken?")
+                    .font(.title2)
+                    .bold()
+                    .foregroundColor(.brandPrimaryText)
+                    .multilineTextAlignment(.center)
+
+                Text("We'll check the lighting and framing for you, so it's right the first time.")
+                    .font(.body)
+                    .foregroundColor(.brandSecondaryText)
+                    .multilineTextAlignment(.center)
+            }
+
+            VStack(spacing: 20) {
+                TextField("First and last name", text: $patientName)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                    .font(.title3)
+                    .frame(maxWidth: .infinity)
+                    .multilineTextAlignment(.center)
+                    .autocapitalization(.words)
+                    .disableAutocorrection(true)
+                    .onChange(of: patientName) { newValue in
+                        patientName = String(newValue.prefix(16))
+                    }
+
+                Button(action: {
+                    if isPatientNameValid {
+                        currentStep = .camera
+                    }
+                }) {
+                    HStack(spacing: 12) {
+                        Image(systemName: "camera")
+                        Text("Take Photo")
+                    }
+                }
+                .buttonStyle(BrandPrimaryButtonStyle(isEnabled: isPatientNameValid, fillWidth: true))
+                .disabled(!isPatientNameValid)
+            }
+            .brandCard()
+        }
+        .padding(.top, 20)
     }
     
     private var transferView: some View {
-        VStack(spacing: 40) {
+        VStack(spacing: 32) {
             VStack(spacing: 20) {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: 80))
                     .foregroundColor(.brandGold)
-                
+
                 Text(portraitReadyTitle)
                     .font(.title2)
                     .bold()
                     .foregroundColor(.brandPrimaryText)
                     .multilineTextAlignment(.center)
-                
+
                 Text("Checked and ready to save.")
                     .font(.body)
                     .foregroundColor(.brandSecondaryText)
                     .multilineTextAlignment(.center)
             }
-            
-            Button(action: { showingDocumentPicker = true }) {
-                HStack(spacing: 12) {
-                    Image(systemName: "square.and.arrow.down")
-                    Text("Save Photo")
+
+            VStack(spacing: 20) {
+                Button(action: { showingDocumentPicker = true }) {
+                    HStack(spacing: 12) {
+                        Image(systemName: "square.and.arrow.down")
+                        Text("Save Photo")
+                    }
                 }
+                .buttonStyle(BrandPrimaryButtonStyle(fillWidth: true))
             }
-            .buttonStyle(BrandPrimaryButtonStyle())
-            .frame(minWidth: 280)
             .brandCard()
         }
     }
@@ -246,7 +256,8 @@ struct ContentView: View {
                         Image(uiImage: photo)
                             .resizable()
                             .scaledToFit()
-                            .frame(height: 200)
+                            .frame(maxWidth: BrandLayout.photoPreviewMaxWidth)
+                            .frame(maxHeight: 220)
                             .cornerRadius(16)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 16)
@@ -265,49 +276,17 @@ struct ContentView: View {
                                 Text("Use This Photo")
                             }
                         }
-                        .buttonStyle(BrandPrimaryButtonStyle())
-                        .frame(minWidth: 280)
+                        .buttonStyle(BrandPrimaryButtonStyle(fillWidth: true))
                     } else {
-                        HStack(spacing: 15) {
-                            VStack(spacing: 10) {
-                                Text("Tips")
-                                    .font(.headline)
-                                    .foregroundColor(.brandPrimaryText)
-                                
-                                VStack(alignment: .leading, spacing: 5) {
-                                    Text("• Center the face in the frame")
-                                    Text("• Find soft, even light on the face")
-                                    Text("• Just one person in the shot")
-                                }
-                                .font(.body)
-                                .foregroundColor(.brandSecondaryText)
-                            }
-                            .padding()
-                            .background(Color.brandSecondaryButtonBackground)
-                            .cornerRadius(16)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            
-                            Button(action: {
-                                currentStep = .camera
-                                headshotResult = nil
-                            }) {
-                                HStack(spacing: 12) {
-                                    Image(systemName: "camera.rotate")
-                                    Text("Retake Photo")
-                                }
-                            }
-                            .buttonStyle(BrandPrimaryButtonStyle())
-                            .frame(width: 200)
-                        }
-                        
+                        validationRetryActions
+
                         Button(action: processValidatedPhoto) {
                             HStack(spacing: 12) {
                                 Image(systemName: "photo")
                                 Text("Use Anyway")
                             }
                         }
-                        .buttonStyle(BrandSecondaryButtonStyle())
-                        .frame(minWidth: 280)
+                        .buttonStyle(BrandSecondaryButtonStyle(fillWidth: true))
                     }
                 }
             }
@@ -339,45 +318,109 @@ struct ContentView: View {
                     Image(uiImage: finalImage)
                         .resizable()
                         .scaledToFit()
-                        .frame(height: 240)
+                        .frame(maxWidth: BrandLayout.photoPreviewMaxWidth)
+                        .frame(maxHeight: 260)
                         .cornerRadius(16)
                         .overlay(
                             RoundedRectangle(cornerRadius: 16)
                                 .stroke(Color.brandGold, lineWidth: 3)
                         )
-                    
-                    VStack(spacing: 4) {
-                        Text("640 × 480 pixels · Original background · JPEG")
-                            .font(.caption)
-                            .foregroundColor(.brandSecondaryText)
-                    }
+
+                    Text("640 × 480 pixels · Original background · JPEG")
+                        .font(.caption)
+                        .foregroundColor(.brandSecondaryText)
+                        .multilineTextAlignment(.center)
                 }
             }
-            
-            HStack(spacing: 15) {
-                Button(action: {
-                    currentStep = .camera
-                    finalProcessedImage = nil
-                    headshotResult = nil
-                }) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "camera.rotate")
-                        Text("Retake Photo")
-                    }
-                }
-                .buttonStyle(BrandSecondaryButtonStyle())
-                .frame(width: 200)
-                
-                Button(action: saveToServer) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "square.and.arrow.down")
-                        Text("Save Photo")
-                    }
-                }
-                .buttonStyle(BrandPrimaryButtonStyle())
-                .frame(width: 200)
+
+            finalPreviewActions
+                .brandCard()
+        }
+    }
+
+    @ViewBuilder
+    private var validationRetryActions: some View {
+        let tips = validationTipsBox
+        let retakeButton = Button(action: {
+            currentStep = .camera
+            headshotResult = nil
+        }) {
+            HStack(spacing: 12) {
+                Image(systemName: "camera.rotate")
+                Text("Retake Photo")
             }
-            .brandCard()
+        }
+        .buttonStyle(BrandPrimaryButtonStyle(fillWidth: !useSideBySideActions))
+
+        if useSideBySideActions {
+            HStack(alignment: .top, spacing: 16) {
+                tips
+                retakeButton
+                    .frame(maxWidth: BrandLayout.buttonMaxWidth)
+            }
+        } else {
+            VStack(spacing: 16) {
+                tips
+                retakeButton
+            }
+        }
+    }
+
+    private var validationTipsBox: some View {
+        VStack(spacing: 10) {
+            Text("Tips")
+                .font(.headline)
+                .foregroundColor(.brandPrimaryText)
+
+            VStack(alignment: .leading, spacing: 5) {
+                Text("• Center the face in the frame")
+                Text("• Find soft, even light on the face")
+                Text("• Just one person in the shot")
+            }
+            .font(.body)
+            .foregroundColor(.brandSecondaryText)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding()
+        .background(Color.brandSecondaryButtonBackground)
+        .cornerRadius(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder
+    private var finalPreviewActions: some View {
+        let retakeButton = Button(action: {
+            currentStep = .camera
+            finalProcessedImage = nil
+            headshotResult = nil
+        }) {
+            HStack(spacing: 8) {
+                Image(systemName: "camera.rotate")
+                Text("Retake Photo")
+            }
+        }
+        .buttonStyle(BrandSecondaryButtonStyle(fillWidth: !useSideBySideActions))
+
+        let saveButton = Button(action: saveToServer) {
+            HStack(spacing: 8) {
+                Image(systemName: "square.and.arrow.down")
+                Text("Save Photo")
+            }
+        }
+        .buttonStyle(BrandPrimaryButtonStyle(fillWidth: !useSideBySideActions))
+
+        if useSideBySideActions {
+            HStack(spacing: 16) {
+                retakeButton
+                    .frame(maxWidth: .infinity)
+                saveButton
+                    .frame(maxWidth: .infinity)
+            }
+        } else {
+            VStack(spacing: 16) {
+                retakeButton
+                saveButton
+            }
         }
     }
     
@@ -399,14 +442,15 @@ struct ContentView: View {
                     .multilineTextAlignment(.center)
             }
             
-            Button(action: resetForAnotherPhoto) {
-                HStack(spacing: 8) {
-                    Image(systemName: "camera")
-                    Text("Take Another")
+            VStack(spacing: 20) {
+                Button(action: resetForAnotherPhoto) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "camera")
+                        Text("Take Another")
+                    }
                 }
+                .buttonStyle(BrandPrimaryButtonStyle(fillWidth: true))
             }
-            .buttonStyle(BrandPrimaryButtonStyle())
-            .frame(width: 240)
             .brandCard()
         }
     }

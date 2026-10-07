@@ -7,6 +7,15 @@
 
 import SwiftUI
 
+enum BrandLayout {
+    static let contentMaxWidth: CGFloat = 520
+    static let wideContentMaxWidth: CGFloat = 640
+    static let buttonMinWidth: CGFloat = 200
+    static let buttonMaxWidth: CGFloat = 320
+    static let horizontalPadding: CGFloat = 24
+    static let photoPreviewMaxWidth: CGFloat = 360
+}
+
 extension Color {
     init(hex: String) {
         let sanitized = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
@@ -123,11 +132,15 @@ extension Color {
 
 struct BrandPrimaryButtonStyle: ButtonStyle {
     var isEnabled: Bool = true
+    var fillWidth: Bool = false
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.title3.weight(.medium))
-            .frame(minWidth: 200)
+            .frame(
+                minWidth: BrandLayout.buttonMinWidth,
+                maxWidth: fillWidth ? .infinity : BrandLayout.buttonMaxWidth
+            )
             .frame(height: 56)
             .padding(.horizontal, 20)
             .background(isEnabled ? Color.brandPrimaryButtonBackground.opacity(configuration.isPressed ? 0.85 : 1.0) : Color.brandPrimaryButtonDisabledBackground)
@@ -137,10 +150,15 @@ struct BrandPrimaryButtonStyle: ButtonStyle {
 }
 
 struct BrandSecondaryButtonStyle: ButtonStyle {
+    var fillWidth: Bool = false
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.title3.weight(.medium))
-            .frame(minWidth: 200)
+            .frame(
+                minWidth: BrandLayout.buttonMinWidth,
+                maxWidth: fillWidth ? .infinity : BrandLayout.buttonMaxWidth
+            )
             .frame(height: 56)
             .padding(.horizontal, 20)
             .background(Color.brandSecondaryButtonBackground.opacity(configuration.isPressed ? 0.75 : 1.0))
@@ -161,8 +179,22 @@ struct BrandCard: ViewModifier {
     }
 }
 
+struct BrandContentColumn: ViewModifier {
+    var maxWidth: CGFloat = BrandLayout.contentMaxWidth
+
+    func body(content: Content) -> some View {
+        content
+            .frame(maxWidth: maxWidth)
+            .frame(maxWidth: .infinity)
+    }
+}
+
 extension View {
     func brandCard() -> some View {
         modifier(BrandCard())
+    }
+
+    func brandContentColumn(maxWidth: CGFloat = BrandLayout.contentMaxWidth) -> some View {
+        modifier(BrandContentColumn(maxWidth: maxWidth))
     }
 }
