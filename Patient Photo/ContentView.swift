@@ -44,7 +44,7 @@ struct ContentView: View {
             VStack(spacing: 15) {
                 HStack {
                     VStack(alignment: .leading, spacing: 5) {
-                        Text("Patient Photo")
+                        Text("Staff Portrait")
                             .font(.title2)
                             .bold()
                         Text("AI-Powered Headshot Capture")
@@ -123,7 +123,7 @@ struct ContentView: View {
                             .font(.system(size: 50))
                             .foregroundColor(.blue)
                         
-                        Text("Enter Patient Name")
+                        Text("Enter Person Name")
                             .font(.title2)
                             .bold()
                         
@@ -139,7 +139,7 @@ struct ContentView: View {
                             .fill(Color(.systemBlue).opacity(0.08))
                             .shadow(color: Color(.systemBlue).opacity(0.10), radius: 8, x: 0, y: 4)
                         VStack(spacing: 20) {
-                            TextField("Patient Name", text: $patientName)
+                            TextField("Person Name", text: $patientName)
                                 .textFieldStyle(RoundedBorderTextFieldStyle())
                                 .font(.title3)
                                 .frame(width: 300)
@@ -195,7 +195,7 @@ struct ContentView: View {
                     .bold()
                 
                 VStack(spacing: 8) {
-                    Text("Patient: \(patientName)")
+                    Text("Person: \(patientName)")
                         .font(.title3)
                         .fontWeight(.medium)
                     
@@ -408,7 +408,7 @@ struct ContentView: View {
             // Show final processed image
             if let finalImage = finalProcessedImage {
                 VStack(spacing: 15) {
-                    Text("Patient: \(patientName)")
+                    Text("Person: \(patientName)")
                         .font(.title3)
                         .fontWeight(.medium)
                     
@@ -517,7 +517,7 @@ struct ContentView: View {
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
                     
-                    Text("Patient: \(patientName)")
+                    Text("Person: \(patientName)")
                         .font(.title3)
                         .fontWeight(.medium)
                 }
