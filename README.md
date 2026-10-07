@@ -1,6 +1,6 @@
 # Staff Portrait
 
-**Version 2.0.4** | **App Store Ready** | **Headshot Capture for ID Cards & Badges**
+**Version 2.1.0** | **App Store Ready** | **Headshot Capture for ID Cards & Badges**
 
 A streamlined iOS app for capturing headshot photos and transferring them to a server for ID cards, badges, and staff directories.
 
@@ -168,11 +168,11 @@ Patient Photo/
 
 ## 🔄 Version History
 
-### Version 2.0.4 (Current)
+### Version 2.1.0 (Current)
 - **Rebrand**: User-facing name changed to Staff Portrait
 - **New App Icon**: Updated icon for ID card and badge use
 - **Generalized Copy**: Camera permission and UI text for non-medical workflows
-- **Version Bump**: Marketing version 2.0.4, build 3
+- **Version Bump**: Marketing version 2.1.0, build 1
 
 ### Version 1.3.1
 - **App Store Compliance**: Removed private API usage
@@ -223,4 +223,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**Built for Organizations** | **Ready for App Store** | **Version 2.0.4**
+**Built for Organizations** | **Ready for App Store** | **Version 2.1.0**

@@ -5,7 +5,7 @@ All notable changes to the Staff Portrait app will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.0.4] - 2026-10-07
+## [2.1.0] - 2026-10-07
 
 ### Changed
 - Start Over on review; camera cancel fully resets to name entry
@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Rebranded user-facing name from Patient Photo to Staff Portrait
 - Replaced app icon
 - Generalized camera permission and UI copy for non-medical use
-- Bumped marketing version to 2.0.4 and build to 3
+- Bumped marketing version to 2.1.0 and build to 1
 - Friendlier, warmer wording throughout the capture flow
 - Warm navy, gold, and cream visual palette with soft rounded cards
 
