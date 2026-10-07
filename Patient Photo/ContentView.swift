@@ -112,7 +112,11 @@ struct ContentView: View {
         }
         .background(Color.brandScreenBackground)
         .sheet(isPresented: $showingImagePicker) {
-            ImagePicker(image: $currentPhoto, onImagePicked: handleImagePicked)
+            ImagePicker(
+                image: $currentPhoto,
+                onImagePicked: handleImagePicked,
+                onCancel: handleCameraCancelled
+            )
         }
         .sheet(isPresented: $showingDocumentPicker) {
             DocumentPicker(
@@ -246,7 +250,21 @@ struct ContentView: View {
                 reviewActions(for: result)
                     .brandCard()
             }
+
+            startOverButton
         }
+    }
+
+    private var startOverButton: some View {
+        Button(action: resetForAnotherPhoto) {
+            HStack(spacing: 6) {
+                Image(systemName: "arrow.uturn.backward")
+                Text("Start Over")
+            }
+            .font(.subheadline.weight(.medium))
+            .foregroundColor(.brandSecondaryText)
+        }
+        .padding(.top, 8)
     }
 
     @ViewBuilder
@@ -371,8 +389,18 @@ struct ContentView: View {
     }
     
     private func resetForAnotherPhoto() {
+        photoManager.cleanupAfterTransfer()
         currentStep = .nameEntry
         patientName = ""
+        currentPhoto = nil
+        headshotResult = nil
+        finalProcessedImage = nil
+        isAnalyzingHeadshot = false
+    }
+
+    private func handleCameraCancelled() {
+        showingImagePicker = false
+        currentStep = .nameEntry
         currentPhoto = nil
         headshotResult = nil
         finalProcessedImage = nil

@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.0.4] - 2026-10-07
 
 ### Changed
+- Start Over on review; camera cancel returns to name entry
 - Streamlined capture: review and save on one screen
 - Rebranded user-facing name from Patient Photo to Staff Portrait
 - Replaced app icon

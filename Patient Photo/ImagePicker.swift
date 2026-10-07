@@ -12,6 +12,7 @@ import UIKit
 struct ImagePicker: UIViewControllerRepresentable {
     @Binding var image: UIImage?
     var onImagePicked: () -> Void
+    var onCancel: () -> Void
     @Environment(\.presentationMode) var presentationMode
     
     func makeUIViewController(context: Context) -> UIImagePickerController {
@@ -45,6 +46,7 @@ struct ImagePicker: UIViewControllerRepresentable {
         }
         
         func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            parent.onCancel()
             parent.presentationMode.wrappedValue.dismiss()
         }
     }
